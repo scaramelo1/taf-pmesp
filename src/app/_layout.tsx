@@ -3,16 +3,16 @@ import { Tabs } from 'expo-router';
 import { SQLiteProvider } from 'expo-sqlite';
 import { StatusBar } from 'expo-status-bar';
 import type { ComponentProps } from 'react';
-import type { ColorValue } from 'react-native';
 
 import { migrar } from '../db/migracoes';
 import { cores } from '../tema';
 
 type NomeIcone = ComponentProps<typeof Ionicons>['name'];
 
+// A tab bar sempre passa a cor como string; o tipo ColorValue do RN inclui null.
 const icone =
   (nome: NomeIcone) =>
-  ({ color, size }: { color: ColorValue; size: number }) => <Ionicons name={nome} color={color} size={size} />;
+  ({ color, size }: { color: unknown; size: number }) => <Ionicons name={nome} color={color as string} size={size} />;
 
 export default function RootLayout() {
   return (
