@@ -1,4 +1,4 @@
-import { PONTOS_SUFICIENCIA, type TabelaPontos } from './regras/taf3.ts';
+import { PONTOS_MINIMOS_TOTAL, PONTOS_SUFICIENCIA, type TabelaPontos } from './regras/taf3.ts';
 import type { ExercicioId, ResultadoRegistrado } from './tipos.ts';
 
 export interface AvaliacaoPontos {
@@ -15,9 +15,11 @@ export interface AvaliacaoTreinoPontos {
   exercicios: { tabela: TabelaPontos; avaliacao: AvaliacaoPontos }[];
   pendentes: ExercicioId[];
   completo: boolean;
-  /** Completo e com suficiência em todos os testes que a exigem. */
+  /** Completo, com suficiência em todos os testes que a exigem e soma ≥ mínimo. */
   aptoGeral: boolean;
   soma: number;
+  /** Pontos que faltam para a soma mínima (0 se já atingiu). */
+  faltaTotal: number;
   /** Média dos pontos dos testes feitos; null se nenhum. */
   media: number | null;
 }
@@ -85,12 +87,14 @@ export function avaliarTreinoPontos(
 
   const soma = exercicios.reduce((s, e) => s + e.avaliacao.pontos, 0);
   const completo = pendentes.length === 0;
+  const faltaTotal = Math.max(0, PONTOS_MINIMOS_TOTAL - soma);
   return {
     exercicios,
     pendentes,
     completo,
-    aptoGeral: completo && exercicios.every((e) => e.avaliacao.suficiente),
+    aptoGeral: completo && faltaTotal === 0 && exercicios.every((e) => e.avaliacao.suficiente),
     soma,
+    faltaTotal,
     media: exercicios.length ? soma / exercicios.length : null,
   };
 }

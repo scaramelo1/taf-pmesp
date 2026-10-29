@@ -52,5 +52,5 @@ export default function NovoTreino() {
 }
 
 const estilos = StyleSheet.create({
-  link: { color: cores.primaria, fontWeight: '600', marginTop: 4 },
+  link: { color: cores.destaque, fontWeight: '600', marginTop: 4 },
 });

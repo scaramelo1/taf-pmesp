@@ -22,10 +22,10 @@ export default function RootLayout() {
         screenOptions={{
           headerStyle: { backgroundColor: cores.primaria },
           headerTintColor: '#fff',
-          tabBarActiveTintColor: cores.primaria,
+          tabBarActiveTintColor: cores.destaque,
         }}
       >
-        <Tabs.Screen name="index" options={{ title: 'Início', tabBarIcon: icone('home') }} />
+        <Tabs.Screen name="index" options={{ title: 'Início', headerTitle: 'ReadyTAF', tabBarIcon: icone('home') }} />
         <Tabs.Screen name="novo-treino" options={{ title: 'Novo treino', tabBarIcon: icone('add-circle') }} />
         <Tabs.Screen name="historico" options={{ title: 'Histórico', tabBarIcon: icone('list') }} />
         <Tabs.Screen name="perfil" options={{ title: 'Perfil', tabBarIcon: icone('person') }} />

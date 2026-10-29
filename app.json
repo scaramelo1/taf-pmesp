@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "TAF PMESP",
+    "name": "ReadyTAF",
     "slug": "taf-pmesp",
     "platforms": [
       "ios",
@@ -12,7 +12,16 @@
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "plugins": [
-      "expo-router"
+      "expo-router",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash-icon.png",
+          "imageWidth": 240,
+          "resizeMode": "contain",
+          "backgroundColor": "#0E1A2B"
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true
@@ -24,7 +33,7 @@
     "android": {
       "package": "br.com.fsadesigner.tafpmesp",
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
+        "backgroundColor": "#121F33",
         "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"

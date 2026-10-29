@@ -9,6 +9,9 @@ export const EDITAL_TAF3 = {
 /** Pontos mínimos para o índice de suficiência (células em negrito da tabela). */
 export const PONTOS_SUFICIENCIA = 20;
 
+/** Soma mínima dos pontos dos 6 testes para aprovação no TAF-3. */
+export const PONTOS_MINIMOS_TOTAL = 251;
+
 export interface TabelaPontos extends Medida {
   /** Valor exigido em cada nível (linha da tabela), do mais fácil para o mais difícil. */
   niveis: number[];

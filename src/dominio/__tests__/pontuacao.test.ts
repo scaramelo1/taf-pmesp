@@ -141,7 +141,7 @@ describe('suficiência e próximo nível', () => {
 describe('avaliarTreinoPontos', () => {
   const r = (exercicio: ExercicioId, valor: number) => ({ exercicio, valor, tentativa: 1 as const });
 
-  it('soma, média e apto geral', () => {
+  it('suficiente em tudo mas soma abaixo de 251 não é apto', () => {
     const av = avaliarTreinoPontos(TABELAS_TAF3, 28, [
       r('barra', 3), // 20
       r('abdominal', 34), // 20
@@ -151,9 +151,41 @@ describe('avaliarTreinoPontos', () => {
       r('natacao50', 90), // 0, mas não reprova
     ]);
     assert.equal(av.completo, true);
-    assert.equal(av.aptoGeral, true);
+    assert.equal(av.aptoGeral, false);
     assert.equal(av.soma, 100);
+    assert.equal(av.faltaTotal, 151);
     assert.ok(Math.abs(av.media! - 100 / 6) < 1e-9);
+  });
+
+  it('apto com soma ≥ 251 e suficiência em todos', () => {
+    const base = [
+      r('barra', 7), // 60
+      r('abdominal', 40), // 50
+      r('apoio', 22), // 60
+      r('corrida50', 8.3), // 50
+      r('corrida2400', 780), // 40
+    ];
+    const no250 = avaliarTreinoPontos(TABELAS_TAF3, 28, [...base, r('natacao50', 90)]); // natação 0
+    assert.equal(no250.soma, 260);
+    assert.equal(no250.aptoGeral, true);
+
+    const abaixo = avaliarTreinoPontos(TABELAS_TAF3, 28, [...base.slice(0, 4), r('corrida2400', 840), r('natacao50', 90)]);
+    assert.equal(abaixo.soma, 240); // 2400 m com 20
+    assert.equal(abaixo.faltaTotal, 11);
+    assert.equal(abaixo.aptoGeral, false);
+  });
+
+  it('soma alta não compensa teste insuficiente', () => {
+    const av = avaliarTreinoPontos(TABELAS_TAF3, 28, [
+      r('barra', 12),
+      r('abdominal', 50),
+      r('apoio', 32),
+      r('corrida50', 6.5),
+      r('corrida2400', 900), // 0 pts na faixa 26–30
+      r('natacao50', 35),
+    ]);
+    assert.ok(av.soma >= 251);
+    assert.equal(av.aptoGeral, false);
   });
 
   it('parcial e insuficiente', () => {

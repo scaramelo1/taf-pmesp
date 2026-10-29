@@ -11,7 +11,7 @@ import { descreverDiferenca, formatarValor } from '../dominio/formato';
 import { avaliarTreinoPontos, faixaDaIdade, valorParaPontos } from '../dominio/pontuacao';
 import { EDITAL_CANDIDATO, EDITAL_TAF3, ehEfetivo, regrasDoTreino, TABELAS_TAF3 } from '../dominio/regras';
 import { regrasCandidato } from '../dominio/regras/candidato';
-import { PONTOS_SUFICIENCIA, rotuloFaixa } from '../dominio/regras/taf3';
+import { PONTOS_MINIMOS_TOTAL, PONTOS_SUFICIENCIA, rotuloFaixa } from '../dominio/regras/taf3';
 import { cores, espaco } from '../tema';
 
 function UltimoCandidato({ treino }: { treino: Treino }) {
@@ -43,8 +43,17 @@ function UltimoEfetivo({ treino, idade }: { treino: Treino; idade: number }) {
   return (
     <>
       <Text style={estilos.resumo}>
-        Total: {av.soma} pts{av.media !== null ? ` · média ${Math.round(av.media)}` : ''}
+        Total: {av.soma} de {PONTOS_MINIMOS_TOTAL} pts
         {av.pendentes.length > 0 ? ` · ${av.pendentes.length} não feito(s)` : ''}
+      </Text>
+      <Text style={[estilos.semReteste, av.aptoGeral && { color: cores.apto }]}>
+        {av.aptoGeral
+          ? 'APTO no TAF-3'
+          : av.faltaTotal > 0
+            ? `Faltam ${av.faltaTotal} pts para o mínimo`
+            : av.completo
+              ? 'Soma atingida, mas há teste abaixo de 20 pts'
+              : 'Faça os 6 testes para o resultado completo'}
       </Text>
       {av.exercicios.map(({ tabela, avaliacao }) => (
         <View key={tabela.exercicio} style={estilos.linha}>
@@ -113,7 +122,10 @@ function TabelaEfetivo({ idade }: { idade: number }) {
           </View>
         );
       })}
-      <TextoSuave>20 pts = índice de suficiência. Natação não tem suficiência. {EDITAL_TAF3.descricao}.</TextoSuave>
+      <TextoSuave>
+        Aprovação: soma de {PONTOS_MINIMOS_TOTAL} pts nos 6 testes e ao menos 20 pts em cada um (natação não tem
+        mínimo). {EDITAL_TAF3.descricao}.
+      </TextoSuave>
     </Cartao>
   );
 }
@@ -203,9 +215,9 @@ export default function Inicio() {
 }
 
 const estilos = StyleSheet.create({
-  link: { color: cores.primaria, fontWeight: '600', marginTop: 4 },
+  link: { color: cores.destaque, fontWeight: '600', marginTop: 4 },
   contagem: { backgroundColor: cores.primaria, borderColor: cores.primaria, alignItems: 'center' },
-  contagemNumero: { fontSize: 40, fontWeight: '800', color: '#fff' },
+  contagemNumero: { fontSize: 40, fontWeight: '800', color: cores.laranja },
   contagemTexto: { fontSize: 15, color: '#fff' },
   linhaTopo: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   resumo: { fontSize: 15, fontWeight: '600', color: cores.texto },

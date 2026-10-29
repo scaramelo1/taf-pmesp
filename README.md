@@ -1,4 +1,4 @@
-# TAF PMESP
+# ReadyTAF
 
 App Android/iOS para registrar treinos do TAF da PMESP e acompanhar a evolução.
 
@@ -7,7 +7,8 @@ Dois modos, escolhidos no perfil:
 - **Candidato**: apto/inapto pelos índices mínimos do concurso, com reteste
   (exceto 2400 m) e margem sobre o mínimo.
 - **Policial (TAF-3)**: pontos pela tabela do efetivo masculino, conforme a
-  faixa etária na data do treino; suficiência = 20 pts (natação não tem).
+  faixa etária na data do treino; aprovação com soma ≥ 251 pts e ao menos
+  20 pts em cada teste (natação não tem mínimo).
 
 Expo SDK 58 · Expo Router · expo-sqlite (dados ficam só no aparelho).
 

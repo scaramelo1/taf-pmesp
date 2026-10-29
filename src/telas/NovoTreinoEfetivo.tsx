@@ -12,8 +12,9 @@ import { ENTRADA_VAZIA, lerEntrada, type Entrada } from '../dominio/entrada';
 import { descreverDiferenca, formatarValor } from '../dominio/formato';
 import { avaliarPontos, avaliarTreinoPontos, faixaDaIdade, valorParaPontos } from '../dominio/pontuacao';
 import { EDITAL_TAF3, TABELAS_TAF3 } from '../dominio/regras';
-import { PONTOS_SUFICIENCIA, rotuloFaixa } from '../dominio/regras/taf3';
+import { PONTOS_MINIMOS_TOTAL, PONTOS_SUFICIENCIA, rotuloFaixa } from '../dominio/regras/taf3';
 import type { ExercicioId, ResultadoRegistrado } from '../dominio/tipos';
+import { cores } from '../tema';
 import { estilos } from './NovoTreinoCandidato';
 
 export function NovoTreinoEfetivo({ perfil, nascimento }: { perfil: Perfil; nascimento: string }) {
@@ -113,7 +114,15 @@ export function NovoTreinoEfetivo({ perfil, nascimento }: { perfil: Perfil; nasc
       <CartaoObservacao valor={observacao} onChange={setObservacao} />
 
       <Cartao style={estilos.resumo}>
-        <Text style={estilos.resumoTitulo}>Total: {avaliacao.soma} pontos</Text>
+        <Text style={estilos.resumoTitulo}>
+          Total: {avaliacao.soma} de {PONTOS_MINIMOS_TOTAL} pontos mínimos
+        </Text>
+        {avaliacao.exercicios.length > 0 && (
+          <Text style={[estilos.alerta, avaliacao.faltaTotal === 0 && { color: cores.apto }]}>
+            {avaliacao.faltaTotal > 0 ? `Faltam ${avaliacao.faltaTotal} pontos para o mínimo` : 'Soma mínima atingida'}
+            {avaliacao.aptoGeral ? ' · APTO no TAF-3' : ''}
+          </Text>
+        )}
         {avaliacao.media !== null && (
           <TextoSuave>
             Média {Math.round(avaliacao.media)} pts · suficiente em {suficientes} de {avaliacao.exercicios.length}

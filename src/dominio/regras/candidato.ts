@@ -3,7 +3,7 @@ import type { Cargo, Direcao, ExercicioId, RegraMinimo, Sexo, Unidade } from '..
 /** Identifica a versão dos índices; fica gravada em cada treino. */
 export const EDITAL_CANDIDATO = {
   id: 'candidato-2026',
-  descricao: 'TAF de ingresso PMESP (índices de out/2026)',
+  descricao: 'Índices do último edital de ingresso PMESP',
 };
 
 interface IndicePorSexo {
