@@ -19,6 +19,8 @@ export interface Treino {
   edital: string;
   sexo: Sexo;
   cargo: Cargo;
+  /** Idade na data do treino (usada no TAF-3); null em treinos de candidato antigos. */
+  idade: number | null;
   observacao: string;
   resultados: ResultadoRegistrado[];
 }
@@ -67,11 +69,12 @@ export async function criarTreino(db: SQLiteDatabase, t: NovoTreino): Promise<nu
   let id = 0;
   await db.withTransactionAsync(async () => {
     const r = await db.runAsync(
-      'INSERT INTO treino (data, edital, sexo, cargo, observacao) VALUES (?, ?, ?, ?, ?)',
+      'INSERT INTO treino (data, edital, sexo, cargo, idade, observacao) VALUES (?, ?, ?, ?, ?, ?)',
       t.data,
       t.edital,
       t.sexo,
       t.cargo,
+      t.idade,
       t.observacao,
     );
     id = r.lastInsertRowId;
@@ -91,7 +94,7 @@ export async function criarTreino(db: SQLiteDatabase, t: NovoTreino): Promise<nu
 /** Todos os treinos com resultados, do mais recente para o mais antigo. */
 export async function listarTreinos(db: SQLiteDatabase): Promise<Treino[]> {
   const treinos = await db.getAllAsync<Omit<Treino, 'resultados'>>(
-    'SELECT id, data, edital, sexo, cargo, observacao FROM treino ORDER BY data DESC, id DESC',
+    'SELECT id, data, edital, sexo, cargo, idade, observacao FROM treino ORDER BY data DESC, id DESC',
   );
   const resultados = await db.getAllAsync<ResultadoRegistrado & { treino_id: number }>(
     'SELECT treino_id, exercicio, valor, tentativa FROM resultado',

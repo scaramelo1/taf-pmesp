@@ -109,6 +109,19 @@ export function Selo({ apto }: { apto: boolean }) {
   );
 }
 
+export function SeloPontos({ pontos, suficiente }: { pontos: number; suficiente: boolean }) {
+  return (
+    <View style={[estilos.selo, { backgroundColor: suficiente ? cores.apto : cores.inapto }]}>
+      <Text style={estilos.seloTexto}>{pontos} PTS</Text>
+    </View>
+  );
+}
+
+/** Texto pequeno à direita de um campo de exercício. */
+export function Detalhe({ children }: { children: ReactNode }) {
+  return <Text style={estilos.detalhe}>{children}</Text>;
+}
+
 export const estilos = StyleSheet.create({
   tela: { flex: 1, backgroundColor: cores.fundo },
   conteudo: { padding: espaco.m, gap: espaco.m, paddingBottom: espaco.g * 2 },
@@ -151,4 +164,5 @@ export const estilos = StyleSheet.create({
   botaoTexto: { color: '#fff', fontSize: 16, fontWeight: '700' },
   selo: { borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3 },
   seloTexto: { color: '#fff', fontSize: 12, fontWeight: '800' },
+  detalhe: { fontSize: 13, color: cores.textoSuave, textAlign: 'right' },
 });

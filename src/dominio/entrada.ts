@@ -1,5 +1,5 @@
 import { lerValor } from './formato.ts';
-import type { RegraMinimo } from './tipos.ts';
+import type { Medida } from './tipos.ts';
 
 /**
  * Como o valor é digitado:
@@ -17,13 +17,13 @@ export interface Entrada {
 
 export const ENTRADA_VAZIA: Entrada = { texto: '', min: '', seg: '' };
 
-export function tipoEntrada(regra: RegraMinimo): TipoEntrada {
-  if (regra.unidade === 'reps') return 'inteiro';
-  return regra.minimo >= 60 ? 'minseg' : 'decimal';
+export function tipoEntrada(medida: Medida): TipoEntrada {
+  if (medida.unidade === 'reps') return 'inteiro';
+  return medida.exercicio === 'corrida2400' || medida.exercicio === 'natacao50' ? 'minseg' : 'decimal';
 }
 
 /** undefined = campo vazio; null = preenchido com valor inválido. */
-export function lerEntrada(regra: RegraMinimo, e: Entrada): number | null | undefined {
+export function lerEntrada(regra: Medida, e: Entrada): number | null | undefined {
   let valor: number | null;
 
   if (tipoEntrada(regra) === 'minseg') {

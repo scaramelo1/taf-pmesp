@@ -1,24 +1,24 @@
+import type { ReactNode } from 'react';
 import { StyleSheet, Text, TextInput, View } from 'react-native';
 
-import type { AvaliacaoTentativa } from '../dominio/avaliacao';
 import { type Entrada, tipoEntrada } from '../dominio/entrada';
-import { descreverDiferenca } from '../dominio/formato';
-import type { RegraMinimo } from '../dominio/tipos';
+import type { Medida } from '../dominio/tipos';
 import { cores } from '../tema';
-import { Erro, Rotulo, Selo, estilos as ui } from './ui';
+import { Erro, Rotulo, estilos as ui } from './ui';
 
 interface Props {
   rotulo: string;
-  regra: RegraMinimo;
+  regra: Medida;
   entrada: Entrada;
   onChange: (e: Entrada) => void;
   /** undefined = vazio; null = inválido. */
   valor: number | null | undefined;
-  avaliacao: AvaliacaoTentativa | null;
+  /** Resultado mostrado ao lado do campo (apto/inapto, pontos…). */
+  children?: ReactNode;
 }
 
 /** Campo de digitação de um exercício (formato conforme o tipo) com o resultado ao lado. */
-export function CampoExercicio({ rotulo, regra, entrada, onChange, valor, avaliacao }: Props) {
+export function CampoExercicio({ rotulo, regra, entrada, onChange, valor, children }: Props) {
   const tipo = tipoEntrada(regra);
 
   return (
@@ -62,12 +62,7 @@ export function CampoExercicio({ rotulo, regra, entrada, onChange, valor, avalia
           </View>
         )}
 
-        {avaliacao && (
-          <View style={estilos.resultado}>
-            <Selo apto={avaliacao.apto} />
-            <Text style={estilos.diferenca}>{descreverDiferenca(regra, avaliacao.diferenca)}</Text>
-          </View>
-        )}
+        {children && <View style={estilos.resultado}>{children}</View>}
       </View>
       {valor === null && <Erro>Valor inválido</Erro>}
     </View>
@@ -81,5 +76,4 @@ const estilos = StyleSheet.create({
   separador: { fontSize: 20, fontWeight: '700', color: cores.texto },
   unidade: { fontSize: 15, color: cores.textoSuave },
   resultado: { flex: 1, alignItems: 'flex-end', gap: 2 },
-  diferenca: { fontSize: 13, color: cores.textoSuave },
 });

@@ -34,3 +34,10 @@ export function mascararData(texto: string): string {
 export function diasEntre(de: string, ate: string): number {
   return Math.round((Date.parse(`${ate}T00:00:00Z`) - Date.parse(`${de}T00:00:00Z`)) / 86_400_000);
 }
+
+/** Idade completa (anos) na data `em`; ambos AAAA-MM-DD. */
+export function idadeEm(nascimento: string, em: string): number {
+  const [an, mn, dn] = nascimento.split('-').map(Number);
+  const [ae, me, de] = em.split('-').map(Number);
+  return ae - an - (me < mn || (me === mn && de < dn) ? 1 : 0);
+}

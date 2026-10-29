@@ -1,6 +1,6 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
 
-const VERSAO_ATUAL = 1;
+const VERSAO_ATUAL = 2;
 
 /** Passado como onInit do SQLiteProvider; roda a cada abertura do banco. */
 export async function migrar(db: SQLiteDatabase) {
@@ -46,6 +46,11 @@ export async function migrar(db: SQLiteDatabase) {
         UNIQUE (treino_id, exercicio, tentativa)
       );
     `);
+  }
+
+  if (versao < 2) {
+    // Idade na data do treino: define a faixa etária da tabela do TAF-3.
+    await db.execAsync('ALTER TABLE treino ADD COLUMN idade INTEGER');
   }
 
   await db.execAsync(`PRAGMA user_version = ${VERSAO_ATUAL}`);

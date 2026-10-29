@@ -1,7 +1,13 @@
 # TAF PMESP
 
-App Android/iOS para registrar treinos do TAF da PMESP e acompanhar a evolução
-(apto/inapto, margem sobre o índice mínimo, melhorou/piorou por exercício e geral).
+App Android/iOS para registrar treinos do TAF da PMESP e acompanhar a evolução.
+
+Dois modos, escolhidos no perfil:
+
+- **Candidato**: apto/inapto pelos índices mínimos do concurso, com reteste
+  (exceto 2400 m) e margem sobre o mínimo.
+- **Policial (TAF-3)**: pontos pela tabela do efetivo masculino, conforme a
+  faixa etária na data do treino; suficiência = 20 pts (natação não tem).
 
 Expo SDK 58 · Expo Router · expo-sqlite (dados ficam só no aparelho).
 
@@ -44,6 +50,7 @@ src/
 
 ## Atualizar índices de um novo edital
 
-Edite `src/dominio/regras/candidato.ts` (índices e `EDITAL_CANDIDATO.id`) e
-ajuste os testes em `src/dominio/__tests__`. Treinos antigos guardam o edital
+Candidato: edite `src/dominio/regras/candidato.ts` (índices e `EDITAL_CANDIDATO.id`).
+TAF-3: `src/dominio/regras/taf3.ts` (linhas da tabela e pontos por faixa).
+Ajuste os testes em `src/dominio/__tests__`. Treinos antigos guardam o edital
 com que foram registrados.

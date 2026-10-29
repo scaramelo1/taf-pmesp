@@ -1,4 +1,4 @@
-import type { RegraMinimo, Unidade } from './tipos.ts';
+import type { Medida, Unidade } from './tipos.ts';
 
 /**
  * Lê um tempo digitado e devolve segundos.
@@ -45,7 +45,7 @@ export function formatarValor(unidade: Unidade, valor: number): string {
 }
 
 /** Ex.: "faltam 6 s", "sobram 4 reps", "no limite". */
-export function descreverDiferenca(regra: RegraMinimo, diferenca: number): string {
+export function descreverDiferenca(regra: Pick<Medida, 'unidade'>, diferenca: number): string {
   if (diferenca === 0) return 'no limite';
   const quanto = formatarValor(regra.unidade, Math.abs(diferenca));
   const plural = Math.abs(diferenca) === 1 ? '' : 'm';

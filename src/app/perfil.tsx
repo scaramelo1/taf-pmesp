@@ -33,7 +33,9 @@ export default function PerfilTela() {
     });
   }, [db]);
 
-  const erroNascimento = erroData(nascimento);
+  const efetivo = modo === 'efetivo';
+  // No TAF-3 a idade define a faixa de pontos, então a data de nascimento é obrigatória.
+  const erroNascimento = efetivo && !nascimento ? 'Obrigatória no modo Policial' : erroData(nascimento);
   const erroProva = erroData(prova);
 
   async function salvar() {
@@ -41,7 +43,7 @@ export default function PerfilTela() {
     try {
       await salvarPerfil(db, {
         nome: nome.trim(),
-        sexo,
+        sexo: efetivo ? 'M' : sexo,
         cargo,
         modo,
         dataNascimento: lerData(nascimento),
@@ -59,33 +61,56 @@ export default function PerfilTela() {
   return (
     <ScrollView style={estilos.tela} contentContainerStyle={estilos.conteudo} keyboardShouldPersistTaps="handled">
       <Cartao>
+        <Rotulo>Eu sou</Rotulo>
+        <Segmentado
+          valor={modo}
+          onChange={setModo}
+          opcoes={[
+            { valor: 'candidato', rotulo: 'Candidato' },
+            { valor: 'efetivo', rotulo: 'Policial (TAF-3)' },
+          ]}
+        />
+        <TextoSuave>
+          {efetivo
+            ? 'Pontuação pela tabela do TAF-3 do efetivo, conforme sua faixa etária.'
+            : 'Apto/inapto pelos índices mínimos do concurso de ingresso.'}
+        </TextoSuave>
+      </Cartao>
+
+      <Cartao>
         <Campo rotulo="Nome" value={nome} onChangeText={setNome} placeholder="Seu nome" autoCapitalize="words" />
 
-        <Rotulo>Sexo</Rotulo>
-        <Segmentado
-          valor={sexo}
-          onChange={setSexo}
-          opcoes={[
-            { valor: 'M', rotulo: 'Masculino' },
-            { valor: 'F', rotulo: 'Feminino' },
-          ]}
-        />
+        {efetivo ? (
+          <TextoSuave>A tabela do TAF-3 disponível no app é a do efetivo masculino.</TextoSuave>
+        ) : (
+          <>
+            <Rotulo>Sexo</Rotulo>
+            <Segmentado
+              valor={sexo}
+              onChange={setSexo}
+              opcoes={[
+                { valor: 'M', rotulo: 'Masculino' },
+                { valor: 'F', rotulo: 'Feminino' },
+              ]}
+            />
 
-        <Rotulo>Cargo pretendido</Rotulo>
-        <Segmentado
-          valor={cargo}
-          onChange={setCargo}
-          opcoes={[
-            { valor: 'soldado', rotulo: 'Soldado' },
-            { valor: 'oficial', rotulo: 'Aluno Oficial' },
-          ]}
-        />
-        <TextoSuave>Aluno Oficial também faz natação 50 m.</TextoSuave>
+            <Rotulo>Cargo pretendido</Rotulo>
+            <Segmentado
+              valor={cargo}
+              onChange={setCargo}
+              opcoes={[
+                { valor: 'soldado', rotulo: 'Soldado' },
+                { valor: 'oficial', rotulo: 'Aluno Oficial' },
+              ]}
+            />
+            <TextoSuave>Aluno Oficial também faz natação 50 m.</TextoSuave>
+          </>
+        )}
       </Cartao>
 
       <Cartao>
         <Campo
-          rotulo="Data da prova (opcional)"
+          rotulo={efetivo ? 'Data do próximo TAF (opcional)' : 'Data da prova (opcional)'}
           value={prova}
           onChangeText={(t) => setProva(mascararData(t))}
           placeholder="DD/MM/AAAA"
@@ -94,7 +119,7 @@ export default function PerfilTela() {
           erro={erroProva}
         />
         <Campo
-          rotulo="Data de nascimento (opcional)"
+          rotulo={efetivo ? 'Data de nascimento' : 'Data de nascimento (opcional)'}
           value={nascimento}
           onChangeText={(t) => setNascimento(mascararData(t))}
           placeholder="DD/MM/AAAA"
