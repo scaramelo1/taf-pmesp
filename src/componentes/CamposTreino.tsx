@@ -1,5 +1,5 @@
 import { mascararData } from '../dominio/datas';
-import { Campo, Cartao, TextoSuave } from './ui';
+import { Campo, Cartao } from './ui';
 
 export function CartaoData({ data, onChange, erro }: { data: string; onChange: (d: string) => void; erro?: string }) {
   return (
@@ -13,7 +13,6 @@ export function CartaoData({ data, onChange, erro }: { data: string; onChange: (
         maxLength={10}
         erro={erro}
       />
-      <TextoSuave>Preencha só os testes que fez hoje.</TextoSuave>
     </Cartao>
   );
 }

@@ -19,8 +19,7 @@ function UltimoCandidato({ treino }: { treino: Treino }) {
   return (
     <>
       <Text style={estilos.resumo}>
-        Aptos: {av.aptos} de {av.avaliados}
-        {av.pendentes.length > 0 ? ` · ${av.pendentes.length} não feito(s)` : ''}
+        {av.completo ? 'TAF completo' : 'Treino avulso'} · aptos: {av.aptos} de {av.avaliados}
       </Text>
       {av.exercicios.map((e) => (
         <View key={e.regra.exercicio} style={estilos.linha}>
@@ -43,18 +42,17 @@ function UltimoEfetivo({ treino, idade }: { treino: Treino; idade: number }) {
   return (
     <>
       <Text style={estilos.resumo}>
-        Total: {av.soma} de {PONTOS_MINIMOS_TOTAL} pts
-        {av.pendentes.length > 0 ? ` · ${av.pendentes.length} não feito(s)` : ''}
+        {av.completo ? `Total: ${av.soma} de ${PONTOS_MINIMOS_TOTAL} pts` : `Treino avulso · ${av.soma} pts`}
       </Text>
-      <Text style={[estilos.semReteste, av.aptoGeral && { color: cores.apto }]}>
-        {av.aptoGeral
-          ? 'APTO no TAF-3'
-          : av.faltaTotal > 0
-            ? `Faltam ${av.faltaTotal} pts para o mínimo`
-            : av.completo
-              ? 'Soma atingida, mas há teste abaixo de 20 pts'
-              : `Faça os ${testesQueContam(TABELAS_TAF3)} testes para o resultado completo`}
-      </Text>
+      {av.completo && (
+        <Text style={[estilos.semReteste, av.aptoGeral && { color: cores.apto }]}>
+          {av.aptoGeral
+            ? 'APTO no TAF-3'
+            : av.faltaTotal > 0
+              ? `Faltam ${av.faltaTotal} pts para o mínimo`
+              : 'Soma atingida, mas há teste abaixo de 20 pts'}
+        </Text>
+      )}
       {av.exercicios.map(({ tabela, avaliacao }) => (
         <View key={tabela.exercicio} style={estilos.linha}>
           <View style={{ flex: 1 }}>

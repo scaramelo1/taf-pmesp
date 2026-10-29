@@ -7,12 +7,11 @@ import { confirmarExclusao, resumoTreino, SeloTreino } from '../../componentes/h
 import { Botao, Cartao, Selo, SeloPontos, SetaTendencia, estilos as ui, TextoSuave, Titulo } from '../../componentes/ui';
 import type { Tendencia } from '../../dominio/avaliacao';
 import { formatarData } from '../../dominio/datas';
-import { compararExercicios, type TreinoAvaliado } from '../../dominio/desempenho';
+import { compararComAnteriores, type TreinoAvaliado } from '../../dominio/desempenho';
 import { descreverDiferenca, formatarValor, formatarVariacao } from '../../dominio/formato';
 import { descreverPontos } from '../../dominio/pontuacao';
-import { regrasDoTreino, TABELAS_TAF3 } from '../../dominio/regras';
 import { PONTOS_MINIMOS_TOTAL } from '../../dominio/regras/taf3';
-import type { ExercicioId, Medida } from '../../dominio/tipos';
+import type { ExercicioId } from '../../dominio/tipos';
 import { useHistorico } from '../../hooks/useHistorico';
 import { cores, espaco } from '../../tema';
 
@@ -90,13 +89,9 @@ export default function DetalheTreino() {
 
   const item = historico[i];
   const { treino, avaliado, modo } = item;
-  const anterior = historico.slice(i + 1).find((h) => h.modo === modo && h.avaliado)?.avaliado ?? null;
-  const setas = avaliado && anterior ? compararExercicios(avaliado, anterior) : new Map<ExercicioId, Tendencia>();
-
-  const medidas: Medida[] = modo === 'candidato' ? regrasDoTreino(treino) : TABELAS_TAF3;
-  const naoFeitos = avaliado
-    ? medidas.filter((m) => avaliado.av.pendentes.includes(m.exercicio)).map((m) => m.nome)
-    : [];
+  const anteriores = historico.slice(i + 1).flatMap((h) => (h.modo === modo && h.avaliado ? [h.avaliado] : []));
+  const setas = avaliado ? compararComAnteriores(avaliado, anteriores) : new Map<ExercicioId, Tendencia>();
+  const { comparadoCom } = item;
 
   const perfilTreino =
     modo === 'candidato'
@@ -114,24 +109,25 @@ export default function DetalheTreino() {
         </View>
         <TextoSuave>{perfilTreino}</TextoSuave>
         <Text style={estilos.resumo}>{resumoTreino(avaliado)}</Text>
-        {avaliado?.modo === 'efetivo' && (
+        {avaliado?.modo === 'efetivo' && avaliado.completo && (
           <Text style={[estilos.status, avaliado.aptoGeral && { color: cores.apto }]}>
             {avaliado.aptoGeral
               ? 'APTO no TAF-3'
               : avaliado.av.faltaTotal > 0
                 ? `Faltaram ${avaliado.av.faltaTotal} pts para os ${PONTOS_MINIMOS_TOTAL}`
-                : avaliado.completo
-                  ? 'Soma atingida, mas houve teste abaixo de 20 pts'
-                  : 'Treino parcial'}
+                : 'Soma atingida, mas houve teste abaixo de 20 pts'}
           </Text>
         )}
-        {item.tendencia && anterior && (
+        {avaliado && !avaliado.completo && (
+          <TextoSuave>Treino avulso: conta no desempenho de cada teste, mas não na nota geral do TAF.</TextoSuave>
+        )}
+        {item.tendencia && comparadoCom && (
           <View style={estilos.valorLinha}>
             <SetaTendencia
               tendencia={item.tendencia}
               texto={item.variacao !== null ? formatarVariacao(modo, item.variacao) : undefined}
             />
-            <TextoSuave>em relação a {formatarData(anterior.treino.data)}</TextoSuave>
+            <TextoSuave>em relação a {formatarData(comparadoCom.data)}</TextoSuave>
           </View>
         )}
       </Cartao>
@@ -140,7 +136,6 @@ export default function DetalheTreino() {
         <Cartao>
           <Titulo>Testes</Titulo>
           <Exercicios avaliado={avaliado} setas={setas} />
-          {naoFeitos.length > 0 && <TextoSuave>Não feitos: {naoFeitos.join(', ')}</TextoSuave>}
         </Cartao>
       )}
 

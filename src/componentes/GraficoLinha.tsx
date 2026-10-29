@@ -17,6 +17,8 @@ interface Props {
   rotuloReferencia?: string;
   /** Eixo só com inteiros (repetições, pontos). */
   inteiro?: boolean;
+  /** Texto quando não há pontos. */
+  vazio?: string;
 }
 
 const ALTURA = 160;
@@ -30,10 +32,10 @@ const MAX_ROTULOS = 5;
  * Gráfico de linha da evolução. O eixo Y começa em `escala.base` em vez de zero:
  * os valores são deslocados e as marcas recebem o texto do valor real.
  */
-export function GraficoLinha({ pontos, formatar, referencia, rotuloReferencia, inteiro }: Props) {
+export function GraficoLinha({ pontos, formatar, referencia, rotuloReferencia, inteiro, vazio }: Props) {
   const [largura, setLargura] = useState(0);
 
-  if (pontos.length === 0) return <TextoSuave>Sem treinos com este teste ainda.</TextoSuave>;
+  if (pontos.length === 0) return <TextoSuave>{vazio ?? 'Sem treinos com este teste ainda.'}</TextoSuave>;
 
   const ref = referencia ?? null;
   const escala = escalaGrafico(

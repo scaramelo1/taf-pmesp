@@ -2,7 +2,7 @@ import {
   avaliarTreino,
   prontoParaProva,
   taxaAprovacaoDePrimeira,
-  tendencia,
+  tendencia as compararTendencia,
   type AvaliacaoTreino,
   type Tendencia,
 } from './avaliacao.ts';
@@ -40,10 +40,15 @@ export interface ItemHistorico<T extends TreinoBase = TreinoBase> {
   modo: Modo;
   /** null: treino do efetivo sem idade conhecida (não dá para pontuar). */
   avaliado: TreinoAvaliado<T> | null;
-  /** Em relação ao treino anterior do mesmo modo. */
+  /**
+   * Completo: nota comparada ao completo anterior do mesmo modo.
+   * Avulso de um teste só: aquele teste comparado à última vez em que foi feito.
+   */
   tendencia: Tendencia | null;
-  /** Diferença da nota para o anterior (fração da margem ou pontos); positiva = melhorou. */
+  /** Diferença da nota para o completo anterior (fração da margem ou pontos); positiva = melhorou. */
   variacao: number | null;
+  /** Treino usado na comparação acima. */
+  comparadoCom: T | null;
 }
 
 export const modoDoTreino = (t: { edital: string }): Modo => (ehEfetivo(t.edital) ? 'efetivo' : 'candidato');
@@ -70,11 +75,15 @@ export function avaliarTreinoSalvo<T extends TreinoBase>(t: T, nascimento: strin
 /** Margem comparada em décimos de ponto percentual, para ruído de arredondamento não virar ▲▼. */
 function compararNotas(modo: Modo, atual: number, anterior: number): { tendencia: Tendencia; variacao: number } {
   const escala = modo === 'candidato' ? 1000 : 1;
-  const t = tendencia('maior', Math.round(atual * escala), Math.round(anterior * escala));
+  const t = compararTendencia('maior', Math.round(atual * escala), Math.round(anterior * escala));
   return { tendencia: t, variacao: atual - anterior };
 }
 
-/** Treinos do mais recente para o mais antigo, cada um comparado ao anterior do mesmo modo. */
+/**
+ * Treinos do mais recente para o mais antigo. Um completo é comparado ao completo anterior
+ * do mesmo modo; um avulso (só alguns testes) não entra na nota geral, porque somar 1 teste
+ * contra 5 não diz nada.
+ */
 export function montarHistorico<T extends TreinoBase>(
   recentesPrimeiro: T[],
   nascimento: string | null,
@@ -83,18 +92,30 @@ export function montarHistorico<T extends TreinoBase>(
   return recentesPrimeiro.map((treino, i) => {
     const modo = modoDoTreino(treino);
     const avaliado = avaliados[i];
-    let comparacao: ReturnType<typeof compararNotas> | null = null;
-    if (avaliado?.nota != null) {
-      const anterior = avaliados.slice(i + 1).find((a) => a?.modo === modo && a.nota !== null);
-      if (anterior?.nota != null) comparacao = compararNotas(modo, avaliado.nota, anterior.nota);
+    const anteriores = avaliados.slice(i + 1).filter((a): a is TreinoAvaliado<T> => a?.modo === modo);
+    let tendencia: Tendencia | null = null;
+    let variacao: number | null = null;
+    let comparadoCom: T | null = null;
+
+    if (avaliado?.completo && avaliado.nota !== null) {
+      const anterior = anteriores.find((a) => a.completo && a.nota !== null);
+      if (anterior) {
+        ({ tendencia, variacao } = compararNotas(modo, avaliado.nota, anterior.nota!));
+        comparadoCom = anterior.treino;
+      }
+    } else if (avaliado) {
+      const marcas = marcasDoTreino(avaliado);
+      if (marcas.length === 1) {
+        const { medida, valor } = marcas[0];
+        const anterior = anteriores.find((a) => marcasDoTreino(a).some((m) => m.medida.exercicio === medida.exercicio));
+        if (anterior) {
+          const antes = marcasDoTreino(anterior).find((m) => m.medida.exercicio === medida.exercicio)!;
+          tendencia = compararTendencia(medida.direcao, valor, antes.valor);
+          comparadoCom = anterior.treino;
+        }
+      }
     }
-    return {
-      treino,
-      modo,
-      avaliado,
-      tendencia: comparacao?.tendencia ?? null,
-      variacao: comparacao?.variacao ?? null,
-    };
+    return { treino, modo, avaliado, tendencia, variacao, comparadoCom };
   });
 }
 
@@ -109,34 +130,40 @@ export interface PontoSerie {
 }
 
 export interface DesempenhoGeral {
-  /** Nota de cada treino em ordem cronológica. */
+  /** Nota de cada treino completo em ordem cronológica. */
   serie: PontoSerie[];
+  /** Treinos completos aptos / treinos completos. */
   aptos: number;
   total: number;
-  /** Os 3 treinos mais recentes completos e aptos. */
+  /** Treinos com só alguns testes (ficam de fora da nota geral). */
+  avulsos: number;
+  /** Os 3 treinos completos mais recentes aptos. */
   pronto: boolean;
-  /** Quantos treinos seguidos, a partir do mais recente, foram aptos. */
+  /** Quantos treinos completos seguidos, a partir do mais recente, foram aptos. */
   sequencia: number;
   /** Maior nota entre os treinos completos. */
   recorde: PontoSerie | null;
 }
 
 export function desempenhoGeral(recentesPrimeiro: TreinoAvaliado[]): DesempenhoGeral {
+  // Treino avulso não quebra a sequência nem puxa a curva geral para baixo.
+  const completos = recentesPrimeiro.filter((a) => a.completo);
   const serie: PontoSerie[] = [];
   let recorde: PontoSerie | null = null;
-  for (const a of [...recentesPrimeiro].reverse()) {
+  for (const a of [...completos].reverse()) {
     if (a.nota === null) continue;
     const ponto = { data: a.treino.data, valor: a.nota };
     serie.push(ponto);
-    if (a.completo && (!recorde || a.nota > recorde.valor)) recorde = ponto;
+    if (!recorde || a.nota > recorde.valor) recorde = ponto;
   }
-  const sequencia = recentesPrimeiro.findIndex((a) => !a.aptoGeral);
+  const sequencia = completos.findIndex((a) => !a.aptoGeral);
   return {
     serie,
-    aptos: recentesPrimeiro.filter((a) => a.aptoGeral).length,
-    total: recentesPrimeiro.length,
-    pronto: prontoParaProva(recentesPrimeiro),
-    sequencia: sequencia === -1 ? recentesPrimeiro.length : sequencia,
+    aptos: completos.filter((a) => a.aptoGeral).length,
+    total: completos.length,
+    avulsos: recentesPrimeiro.length - completos.length,
+    pronto: prontoParaProva(completos),
+    sequencia: sequencia === -1 ? completos.length : sequencia,
     recorde,
   };
 }
@@ -175,7 +202,7 @@ export function tendenciaSerie(direcao: Medida['direcao'], valores: number[]): T
   if (k === 0) return null;
   const recentes = media(valores.slice(-k))!;
   const anteriores = media(valores.slice(-2 * k, -k))!;
-  return tendencia(direcao, recentes, anteriores);
+  return compararTendencia(direcao, recentes, anteriores);
 }
 
 function montarExercicio(
@@ -267,13 +294,28 @@ export function marcasDoTreino(a: TreinoAvaliado): { medida: Medida; valor: numb
       );
 }
 
+/** ▲▼ de cada exercício do treino contra a última vez em que ele foi feito (`anteriores`: mais recentes primeiro). */
+export function compararComAnteriores(atual: TreinoAvaliado, anteriores: TreinoAvaliado[]): Map<ExercicioId, Tendencia> {
+  const resultado = new Map<ExercicioId, Tendencia>();
+  for (const { medida, valor } of marcasDoTreino(atual)) {
+    for (const a of anteriores) {
+      const antes = marcasDoTreino(a).find((m) => m.medida.exercicio === medida.exercicio);
+      if (antes) {
+        resultado.set(medida.exercicio, compararTendencia(medida.direcao, valor, antes.valor));
+        break;
+      }
+    }
+  }
+  return resultado;
+}
+
 /** ▲▼ de cada exercício feito nos dois treinos, pelo valor bruto. */
 export function compararExercicios(atual: TreinoAvaliado, anterior: TreinoAvaliado): Map<ExercicioId, Tendencia> {
   const antes = new Map(marcasDoTreino(anterior).map((m) => [m.medida.exercicio, m.valor]));
   const resultado = new Map<ExercicioId, Tendencia>();
   for (const { medida, valor } of marcasDoTreino(atual)) {
     const v = antes.get(medida.exercicio);
-    if (v !== undefined) resultado.set(medida.exercicio, tendencia(medida.direcao, valor, v));
+    if (v !== undefined) resultado.set(medida.exercicio, compararTendencia(medida.direcao, valor, v));
   }
   return resultado;
 }

@@ -48,7 +48,8 @@ export default function NovoTreino() {
     return <NovoTreinoEfetivo perfil={perfil} nascimento={perfil.dataNascimento} />;
   }
 
-  return <NovoTreinoCandidato perfil={perfil} />;
+  // A key recria a tela quando sexo/cargo mudam, para a lista de testes acompanhar.
+  return <NovoTreinoCandidato key={`${perfil.sexo}-${perfil.cargo}`} perfil={perfil} />;
 }
 
 const estilos = StyleSheet.create({

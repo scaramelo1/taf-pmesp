@@ -5,6 +5,7 @@ import { Alert, ScrollView, Text, View } from 'react-native';
 
 import { CampoExercicio } from '../componentes/CampoExercicio';
 import { CartaoData, CartaoObservacao } from '../componentes/CamposTreino';
+import { SeletorTestes } from '../componentes/SeletorTestes';
 import { Botao, Cartao, Detalhe, SeloPontos, estilos as ui, TextoSuave } from '../componentes/ui';
 import { criarTreino, type Perfil } from '../db/repositorio';
 import { erroDataTreino, formatarData, hojeISO, idadeEm, lerData } from '../dominio/datas';
@@ -30,12 +31,14 @@ export function NovoTreinoEfetivo({ perfil, nascimento }: { perfil: Perfil; nasc
   const [observacao, setObservacao] = useState('');
   const [entradas, setEntradas] = useState<Partial<Record<ExercicioId, Entrada>>>({});
   const [salvando, setSalvando] = useState(false);
+  const [testes, setTestes] = useState<ExercicioId[]>(() => TABELAS_TAF3.map((t) => t.exercicio));
+  const avulso = TABELAS_TAF3.some((t) => !testes.includes(t.exercicio));
 
   const erroData = erroDataTreino(data, hojeISO(), nascimento);
   const dataISO = erroData ? null : lerData(data);
   const idade = idadeEm(nascimento, dataISO ?? hojeISO());
 
-  const leituras = TABELAS_TAF3.map((tabela) => {
+  const leituras = TABELAS_TAF3.filter((t) => testes.includes(t.exercicio)).map((tabela) => {
     const entrada = entradas[tabela.exercicio] ?? ENTRADA_VAZIA;
     const valor = lerEntrada(tabela, entrada);
     const av = typeof valor === 'number' ? avaliarPontos(tabela, idade, valor) : null;
@@ -64,6 +67,7 @@ export function NovoTreinoEfetivo({ perfil, nascimento }: { perfil: Perfil; nasc
         resultados,
       });
       setEntradas({});
+      setTestes(TABELAS_TAF3.map((t) => t.exercicio));
       setObservacao('');
       setData(formatarData(hojeISO()));
       Alert.alert('Treino salvo', `Total: ${avaliacao.soma} pontos`);
@@ -83,6 +87,7 @@ export function NovoTreinoEfetivo({ perfil, nascimento }: { perfil: Perfil; nasc
       automaticallyAdjustKeyboardInsets
     >
       <CartaoData data={data} onChange={setData} erro={erroData} />
+      <SeletorTestes medidas={TABELAS_TAF3} selecionados={testes} onChange={setTestes} />
 
       {leituras.map(({ tabela, entrada, valor, av }) => {
         const suficiencia = tabela.temSuficiencia ? valorParaPontos(tabela, idade, PONTOS_SUFICIENCIA) : null;
@@ -128,9 +133,11 @@ export function NovoTreinoEfetivo({ perfil, nascimento }: { perfil: Perfil; nasc
 
       <Cartao style={estilos.resumo}>
         <Text style={estilos.resumoTitulo}>
-          Total: {avaliacao.soma} de {PONTOS_MINIMOS_TOTAL} pontos mínimos
+          {avulso
+            ? `Treino avulso: ${avaliacao.soma} pts`
+            : `Total: ${avaliacao.soma} de ${PONTOS_MINIMOS_TOTAL} pontos mínimos`}
         </Text>
-        {contam.length > 0 && (
+        {!avulso && contam.length > 0 && (
           <Text style={[estilos.alerta, avaliacao.faltaTotal === 0 && { color: cores.apto }]}>
             {avaliacao.faltaTotal > 0 ? `Faltam ${avaliacao.faltaTotal} pontos para o mínimo` : 'Soma mínima atingida'}
             {avaliacao.aptoGeral ? ' · APTO no TAF-3' : ''}
@@ -141,7 +148,7 @@ export function NovoTreinoEfetivo({ perfil, nascimento }: { perfil: Perfil; nasc
             Média {Math.round(avaliacao.media)} pts · suficiente em {suficientes} de {contam.length}
           </TextoSuave>
         )}
-        {avaliacao.pendentes.length > 0 && contam.length > 0 && (
+        {!avulso && avaliacao.pendentes.length > 0 && contam.length > 0 && (
           <TextoSuave>
             {avaliacao.pendentes.length} de {testesQueContam(TABELAS_TAF3)} teste(s) não registrado(s)
           </TextoSuave>

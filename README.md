@@ -10,6 +10,11 @@ Dois modos, escolhidos no perfil:
   faixa etária na data do treino; aprovação com soma ≥ 251 pts e ao menos
   20 pts em cada teste (natação não tem mínimo).
 
+**Treino avulso**: em Novo treino dá para escolher só alguns testes (ex.: só a
+corrida). Ele entra no desempenho de cada teste, mas não na nota geral, na
+sequência de "pronto para a prova" nem na contagem de TAFs aptos. No TAF-3,
+a natação é registrada mas por enquanto não soma nem reprova.
+
 **Histórico** lista os treinos com ▲▼ em relação ao anterior, abre o detalhe e
 permite excluir. **Desempenho** mostra a evolução (margem média ou pontos), treinos
 aptos, "pronto para a prova" (3 treinos seguidos aptos), recorde e, por teste,

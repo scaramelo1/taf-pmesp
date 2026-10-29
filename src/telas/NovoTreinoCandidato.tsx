@@ -5,6 +5,7 @@ import { Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { CampoExercicio } from '../componentes/CampoExercicio';
 import { CartaoData, CartaoObservacao } from '../componentes/CamposTreino';
+import { SeletorTestes } from '../componentes/SeletorTestes';
 import { Botao, Cartao, Detalhe, Selo, estilos as ui, TextoSuave } from '../componentes/ui';
 import { criarTreino, type Perfil } from '../db/repositorio';
 import { avaliarTreino, avaliarValor, type AvaliacaoTentativa } from '../dominio/avaliacao';
@@ -41,11 +42,13 @@ export function NovoTreinoCandidato({ perfil }: { perfil: Perfil }) {
   const [salvando, setSalvando] = useState(false);
 
   const regras = regrasDoTreino({ edital: EDITAL_CANDIDATO.id, sexo: perfil.sexo, cargo: perfil.cargo });
+  const [testes, setTestes] = useState<ExercicioId[]>(() => regras.map((r) => r.exercicio));
+  const avulso = regras.some((r) => !testes.includes(r.exercicio));
   const obter = (id: ExercicioId) => estado[id] ?? ESTADO_INICIAL;
   const atualizar = (id: ExercicioId, parcial: Partial<EstadoExercicio>) =>
     setEstado((e) => ({ ...e, [id]: { ...(e[id] ?? ESTADO_INICIAL), ...parcial } }));
 
-  const leituras = regras.map((regra) => {
+  const leituras = regras.filter((r) => testes.includes(r.exercicio)).map((regra) => {
     const st = obter(regra.exercicio);
     const v1 = lerEntrada(regra, st.primeira);
     const av1 = typeof v1 === 'number' ? avaliarValor(regra, v1) : null;
@@ -79,6 +82,7 @@ export function NovoTreinoCandidato({ perfil }: { perfil: Perfil }) {
         resultados,
       });
       setEstado({});
+      setTestes(regras.map((r) => r.exercicio));
       setObservacao('');
       setData(formatarData(hojeISO()));
       Alert.alert('Treino salvo', `Aptos: ${avaliacao.aptos} de ${avaliacao.avaliados}`);
@@ -98,6 +102,7 @@ export function NovoTreinoCandidato({ perfil }: { perfil: Perfil }) {
       automaticallyAdjustKeyboardInsets
     >
       <CartaoData data={data} onChange={setData} erro={erroData} />
+      <SeletorTestes medidas={regras} selecionados={testes} onChange={setTestes} />
 
       {leituras.map(({ regra, st, v1, av1, podeReteste, v2, av2 }) => (
         <Cartao key={regra.exercicio}>
@@ -151,7 +156,7 @@ export function NovoTreinoCandidato({ perfil }: { perfil: Perfil }) {
         <Text style={estilos.resumoTitulo}>
           Aptos: {avaliacao.aptos} de {avaliacao.avaliados}
         </Text>
-        {avaliacao.pendentes.length > 0 && avaliacao.avaliados > 0 && (
+        {!avulso && avaliacao.pendentes.length > 0 && avaliacao.avaliados > 0 && (
           <TextoSuave>{avaliacao.pendentes.length} teste(s) não registrado(s)</TextoSuave>
         )}
         {avaliacao.indice !== null && (

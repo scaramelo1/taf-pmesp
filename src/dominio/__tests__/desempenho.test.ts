@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 
 import {
   avaliadosDoModo,
+  compararComAnteriores,
   compararExercicios,
   desempenhoGeral,
   exerciciosCandidato,
@@ -34,6 +35,7 @@ function treino(data: string, valores: Valores, edital = EDITAL_CANDIDATO.id, id
 
 const aptoCompleto: Valores = { barra: 5, abdominal: 40, corrida50: 8, corrida2400: 750 };
 const regras = regrasCandidato('M', 'soldado');
+const completoTaf3: Valores = { barra: 12, abdominal: 50, apoio: 32, corrida50: 6.5, corrida2400: 570 };
 
 describe('montarHistorico', () => {
   it('compara cada treino com o anterior do mesmo modo', () => {
@@ -51,8 +53,43 @@ describe('montarHistorico', () => {
     assert.ok(h[0].variacao! > 0);
     assert.equal(h[1].modo, 'efetivo');
     assert.equal(h[1].tendencia, null);
-    assert.equal(h[2].tendencia, 'melhorou');
+    assert.equal(h[0].comparadoCom?.data, '2026-10-10');
+    assert.equal(h[2].tendencia, null); // o anterior é avulso: não compara a nota geral
     assert.equal(h[3].tendencia, null);
+  });
+
+  it('avulso de um teste compara com a última vez em que o teste foi feito', () => {
+    const h = montarHistorico(
+      [
+        treino('2026-10-20', { corrida2400: 760 }),
+        treino('2026-10-15', { barra: 6 }),
+        treino('2026-10-10', aptoCompleto), // 2400 m em 750
+        treino('2026-10-05', { barra: 2, corrida2400: 800 }),
+      ],
+      null,
+    );
+    assert.equal(h[0].tendencia, 'piorou');
+    assert.equal(h[0].variacao, null);
+    assert.equal(h[0].comparadoCom?.data, '2026-10-10');
+    assert.equal(h[1].tendencia, 'melhorou'); // barra 6 contra 5
+    assert.equal(h[3].tendencia, null); // avulso com 2 testes: sem seta geral
+  });
+
+  it('setas por teste contra a última vez de cada um', () => {
+    const avs = avaliadosDoModo(
+      montarHistorico(
+        [
+          treino('2026-10-20', { barra: 4, corrida2400: 700 }),
+          treino('2026-10-15', { corrida2400: 720 }),
+          treino('2026-10-10', { barra: 5 }),
+        ],
+        null,
+      ),
+      'candidato',
+    );
+    const setas = compararComAnteriores(avs[0], avs.slice(1));
+    assert.equal(setas.get('corrida2400'), 'melhorou');
+    assert.equal(setas.get('barra'), 'piorou');
   });
 
   it('efetivo sem idade usa a data de nascimento; sem nenhuma, não avalia', () => {
@@ -69,14 +106,14 @@ describe('montarHistorico', () => {
       null,
     );
     assert.equal(h[0].tendencia, 'manteve');
-    assert.equal(h[0].variacao, 0);
+    assert.equal(h[0].variacao, null); // avulso: compara o teste, não a soma
   });
 });
 
 describe('desempenhoGeral', () => {
   const avaliados = (ts: TreinoBase[]) => avaliadosDoModo(montarHistorico(ts, null), 'candidato');
 
-  it('série cronológica, aptos X/Y e recorde só entre completos', () => {
+  it('série, aptos X/Y, sequência e recorde só entre completos', () => {
     const g = desempenhoGeral(
       avaliados([
         treino('2026-10-20', { barra: 12 }), // margem enorme, mas incompleto
@@ -86,13 +123,14 @@ describe('desempenhoGeral', () => {
     );
     assert.deepEqual(
       g.serie.map((p) => p.data),
-      ['2026-10-01', '2026-10-10', '2026-10-20'],
+      ['2026-10-01', '2026-10-10'],
     );
     assert.equal(g.aptos, 1);
-    assert.equal(g.total, 3);
+    assert.equal(g.total, 2);
+    assert.equal(g.avulsos, 1);
     assert.equal(g.recorde?.data, '2026-10-10');
     assert.equal(g.pronto, false);
-    assert.equal(g.sequencia, 0);
+    assert.equal(g.sequencia, 1); // o avulso de 20/10 não quebra a sequência
   });
 
   it('pronto com 3 treinos seguidos aptos', () => {
@@ -170,8 +208,8 @@ describe('por exercício', () => {
   it('efetivo: natação nunca é ponto fraco e tempo 0 fica fora do gráfico e das setas', () => {
     const hist = montarHistorico(
       [
-        treino('2026-10-22', { barra: 12, apoio: 32, natacao50: 0 }, EDITAL_TAF3.id),
-        treino('2026-10-20', { barra: 12, apoio: 32, natacao50: 85 }, EDITAL_TAF3.id),
+        treino('2026-10-22', { ...completoTaf3, natacao50: 0 }, EDITAL_TAF3.id),
+        treino('2026-10-20', { ...completoTaf3, natacao50: 85 }, EDITAL_TAF3.id),
       ],
       null,
     );

@@ -133,8 +133,8 @@ export default function Desempenho() {
         <Titulo>Evolução</Titulo>
         <TextoSuave>
           {modo === 'candidato'
-            ? 'Margem média sobre os índices mínimos (cada teste conta até +20%).'
-            : `Pontos totais por treino; aprovação com ${PONTOS_MINIMOS_TOTAL}.`}
+            ? 'Margem média sobre os índices mínimos nos TAFs completos (cada teste conta até +20%).'
+            : `Pontos totais por TAF completo; aprovação com ${PONTOS_MINIMOS_TOTAL}.`}
         </TextoSuave>
         <GraficoLinha
           pontos={geral.serie}
@@ -142,6 +142,7 @@ export default function Desempenho() {
           referencia={modo === 'candidato' ? 0 : PONTOS_MINIMOS_TOTAL}
           rotuloReferencia={modo === 'candidato' ? 'mínimo' : `${PONTOS_MINIMOS_TOTAL} pts`}
           inteiro={modo === 'efetivo'}
+          vazio="Faça um TAF completo para ver a nota geral. Os treinos avulsos aparecem nos testes abaixo."
         />
 
         <View style={[estilos.pronto, { backgroundColor: geral.pronto ? cores.apto : cores.fundo }]}>
@@ -150,16 +151,21 @@ export default function Desempenho() {
           </Text>
           <Text style={[estilos.prontoTexto, geral.pronto && { color: '#fff' }]}>
             {geral.pronto
-              ? `${geral.sequencia} treinos seguidos aptos em todos os testes.`
-              : `${geral.sequencia} de 3 treinos seguidos aptos em todos os testes.`}
+              ? `${geral.sequencia} TAFs completos seguidos aptos.`
+              : `${geral.sequencia} de 3 TAFs completos seguidos aptos.`}
           </Text>
         </View>
 
         <View style={estilos.indicadores}>
-          <Indicador rotulo="Treinos aptos">
+          <Indicador rotulo="TAFs completos aptos">
             <Text style={estilos.indicadorValor}>
               {geral.aptos}/{geral.total}
             </Text>
+            {geral.avulsos > 0 && (
+              <TextoSuave>
+                + {geral.avulsos} {geral.avulsos === 1 ? 'treino avulso' : 'treinos avulsos'}
+              </TextoSuave>
+            )}
           </Indicador>
           <Indicador rotulo="Recorde pessoal">
             {geral.recorde ? (
@@ -168,7 +174,7 @@ export default function Desempenho() {
                 <TextoSuave>{formatarData(geral.recorde.data)}</TextoSuave>
               </>
             ) : (
-              <TextoSuave>faça um treino com todos os testes</TextoSuave>
+              <TextoSuave>faça um TAF completo</TextoSuave>
             )}
           </Indicador>
         </View>
