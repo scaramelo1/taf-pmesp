@@ -9,8 +9,15 @@ import { Botao, Cartao, Detalhe, SeloPontos, estilos as ui, TextoSuave } from '.
 import { criarTreino, type Perfil } from '../db/repositorio';
 import { erroDataTreino, formatarData, hojeISO, idadeEm, lerData } from '../dominio/datas';
 import { ENTRADA_VAZIA, lerEntrada, type Entrada } from '../dominio/entrada';
-import { descreverDiferenca, formatarValor } from '../dominio/formato';
-import { avaliarPontos, avaliarTreinoPontos, faixaDaIdade, valorParaPontos } from '../dominio/pontuacao';
+import { formatarValor } from '../dominio/formato';
+import {
+  avaliarPontos,
+  avaliarTreinoPontos,
+  descreverPontos,
+  faixaDaIdade,
+  testesQueContam,
+  valorParaPontos,
+} from '../dominio/pontuacao';
 import { EDITAL_TAF3, TABELAS_TAF3 } from '../dominio/regras';
 import { PONTOS_MINIMOS_TOTAL, PONTOS_SUFICIENCIA, rotuloFaixa } from '../dominio/regras/taf3';
 import type { ExercicioId, ResultadoRegistrado } from '../dominio/tipos';
@@ -40,7 +47,8 @@ export function NovoTreinoEfetivo({ perfil, nascimento }: { perfil: Perfil; nasc
   );
   const temInvalido = leituras.some((l) => l.valor === null);
   const avaliacao = avaliarTreinoPontos(TABELAS_TAF3, idade, resultados);
-  const suficientes = avaliacao.exercicios.filter((e) => e.avaliacao.suficiente).length;
+  const contam = avaliacao.exercicios.filter((e) => e.tabela.contaNaSoma);
+  const suficientes = contam.filter((e) => e.avaliacao.suficiente).length;
 
   async function salvar() {
     if (!dataISO) return;
@@ -83,10 +91,18 @@ export function NovoTreinoEfetivo({ perfil, nascimento }: { perfil: Perfil; nasc
             <View style={estilos.cabecalho}>
               <Text style={estilos.exercicio}>{tabela.nome}</Text>
               <Text style={estilos.indice}>
-                {suficiencia !== null ? `20 pts: ${formatarValor(tabela.unidade, suficiencia)}` : 'sem suficiência'}
+                {!tabela.contaNaSoma
+                  ? 'não conta'
+                  : suficiencia !== null
+                    ? `20 pts: ${formatarValor(tabela.unidade, suficiencia)}`
+                    : 'sem suficiência'}
               </Text>
             </View>
-            <TextoSuave>Faixa {rotuloFaixa(tabela, faixaDaIdade(tabela, idade))} anos</TextoSuave>
+            <TextoSuave>
+              {tabela.contaNaSoma
+                ? `Faixa ${rotuloFaixa(tabela, faixaDaIdade(tabela, idade))} anos`
+                : 'Por enquanto não soma nem reprova. Se não fez, deixe em branco ou digite 0.'}
+            </TextoSuave>
 
             <CampoExercicio
               rotulo="Resultado"
@@ -97,12 +113,8 @@ export function NovoTreinoEfetivo({ perfil, nascimento }: { perfil: Perfil; nasc
             >
               {av && (
                 <>
-                  <SeloPontos pontos={av.pontos} suficiente={av.suficiente} />
-                  <Detalhe>
-                    {av.proximo
-                      ? `${descreverDiferenca(tabela, -av.proximo.falta)} p/ ${av.proximo.pontos} pts`
-                      : 'pontuação máxima'}
-                  </Detalhe>
+                  <SeloPontos pontos={av.pontos} suficiente={av.suficiente} naoConta={!tabela.contaNaSoma} />
+                  <Detalhe>{descreverPontos(tabela, av)}</Detalhe>
                 </>
               )}
             </CampoExercicio>
@@ -118,7 +130,7 @@ export function NovoTreinoEfetivo({ perfil, nascimento }: { perfil: Perfil; nasc
         <Text style={estilos.resumoTitulo}>
           Total: {avaliacao.soma} de {PONTOS_MINIMOS_TOTAL} pontos mínimos
         </Text>
-        {avaliacao.exercicios.length > 0 && (
+        {contam.length > 0 && (
           <Text style={[estilos.alerta, avaliacao.faltaTotal === 0 && { color: cores.apto }]}>
             {avaliacao.faltaTotal > 0 ? `Faltam ${avaliacao.faltaTotal} pontos para o mínimo` : 'Soma mínima atingida'}
             {avaliacao.aptoGeral ? ' · APTO no TAF-3' : ''}
@@ -126,11 +138,13 @@ export function NovoTreinoEfetivo({ perfil, nascimento }: { perfil: Perfil; nasc
         )}
         {avaliacao.media !== null && (
           <TextoSuave>
-            Média {Math.round(avaliacao.media)} pts · suficiente em {suficientes} de {avaliacao.exercicios.length}
+            Média {Math.round(avaliacao.media)} pts · suficiente em {suficientes} de {contam.length}
           </TextoSuave>
         )}
-        {avaliacao.pendentes.length > 0 && avaliacao.exercicios.length > 0 && (
-          <TextoSuave>{avaliacao.pendentes.length} teste(s) não registrado(s)</TextoSuave>
+        {avaliacao.pendentes.length > 0 && contam.length > 0 && (
+          <TextoSuave>
+            {avaliacao.pendentes.length} de {testesQueContam(TABELAS_TAF3)} teste(s) não registrado(s)
+          </TextoSuave>
         )}
         <TextoSuave>Idade considerada: {idade} anos</TextoSuave>
       </Cartao>

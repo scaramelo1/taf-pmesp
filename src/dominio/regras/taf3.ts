@@ -9,7 +9,7 @@ export const EDITAL_TAF3 = {
 /** Pontos mínimos para o índice de suficiência (células em negrito da tabela). */
 export const PONTOS_SUFICIENCIA = 20;
 
-/** Soma mínima dos pontos dos 6 testes para aprovação no TAF-3. */
+/** Soma mínima dos pontos dos testes que contam (hoje, todos menos a natação) para aprovação no TAF-3. */
 export const PONTOS_MINIMOS_TOTAL = 251;
 
 export interface TabelaPontos extends Medida {
@@ -20,6 +20,8 @@ export interface TabelaPontos extends Medida {
   /** pontos[nível][faixa]; null = célula vazia. */
   pontos: (number | null)[][];
   temSuficiencia: boolean;
+  /** false: o teste é registrado, mas não soma, não reprova e não deixa o treino incompleto. */
+  contaNaSoma: boolean;
 }
 
 const _ = null;
@@ -70,12 +72,13 @@ const PONTOS_ABDOMINAL: (number | null)[][] = [
   [100, _, _, _, _],
 ];
 
-const geral = (m: Medida, niveis: number[], temSuficiencia = true): TabelaPontos => ({
+const geral = (m: Medida, niveis: number[], temSuficiencia = true, contaNaSoma = true): TabelaPontos => ({
   ...m,
   niveis,
   faixas: FAIXAS_GERAL,
   pontos: PONTOS_GERAL,
   temSuficiencia,
+  contaNaSoma,
 });
 
 // Tempos em segundos: 17'30" = 1050 | 11"30 = 11.30 | 1'25" = 85
@@ -93,6 +96,7 @@ export const TABELAS_TAF3: TabelaPontos[] = [
     faixas: FAIXAS_ABDOMINAL,
     pontos: PONTOS_ABDOMINAL,
     temSuficiencia: true,
+    contaNaSoma: true,
   },
   geral(
     { exercicio: 'apoio', nome: 'Apoio de frente', unidade: 'reps', direcao: 'maior' },
@@ -107,9 +111,10 @@ export const TABELAS_TAF3: TabelaPontos[] = [
     [1050, 1020, 990, 960, 930, 900, 870, 840, 810, 780, 750, 720, 690, 660, 630, 600, 570],
   ),
   geral(
-    { exercicio: 'natacao50', nome: 'Natação 50 m', unidade: 'segundos', direcao: 'menor' },
+    { exercicio: 'natacao50', nome: 'Natação 50 m', unidade: 'segundos', direcao: 'menor', aceitaZero: true },
     [85, 85, 85, 85, 85, 85, 85, 85, 80, 70, 65, 60, 55, 50, 45, 40, 35],
     false, // "O teste de natação 50 m não possui índice de suficiência."
+    false, // Por enquanto a natação não conta na pontuação; 0 = não realizada.
   ),
 ];
 

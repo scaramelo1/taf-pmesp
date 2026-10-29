@@ -8,7 +8,7 @@ import { listarTreinos, obterPerfil, type Perfil, type Treino } from '../db/repo
 import { avaliarTreino } from '../dominio/avaliacao';
 import { diasEntre, formatarData, hojeISO, idadeEm } from '../dominio/datas';
 import { descreverDiferenca, formatarValor } from '../dominio/formato';
-import { avaliarTreinoPontos, faixaDaIdade, valorParaPontos } from '../dominio/pontuacao';
+import { avaliarTreinoPontos, descreverPontos, faixaDaIdade, testesQueContam, valorParaPontos } from '../dominio/pontuacao';
 import { EDITAL_CANDIDATO, EDITAL_TAF3, ehEfetivo, regrasDoTreino, TABELAS_TAF3 } from '../dominio/regras';
 import { regrasCandidato } from '../dominio/regras/candidato';
 import { PONTOS_MINIMOS_TOTAL, PONTOS_SUFICIENCIA, rotuloFaixa } from '../dominio/regras/taf3';
@@ -53,20 +53,17 @@ function UltimoEfetivo({ treino, idade }: { treino: Treino; idade: number }) {
             ? `Faltam ${av.faltaTotal} pts para o mínimo`
             : av.completo
               ? 'Soma atingida, mas há teste abaixo de 20 pts'
-              : 'Faça os 6 testes para o resultado completo'}
+              : `Faça os ${testesQueContam(TABELAS_TAF3)} testes para o resultado completo`}
       </Text>
       {av.exercicios.map(({ tabela, avaliacao }) => (
         <View key={tabela.exercicio} style={estilos.linha}>
           <View style={{ flex: 1 }}>
             <Text style={estilos.exercicio}>{tabela.nome}</Text>
             <TextoSuave>
-              {formatarValor(tabela.unidade, avaliacao.valor)}
-              {avaliacao.proximo
-                ? ` · ${descreverDiferenca(tabela, -avaliacao.proximo.falta)} p/ ${avaliacao.proximo.pontos}`
-                : ' · máximo'}
+              {formatarValor(tabela.unidade, avaliacao.valor)} · {descreverPontos(tabela, avaliacao)}
             </TextoSuave>
           </View>
-          <SeloPontos pontos={avaliacao.pontos} suficiente={avaliacao.suficiente} />
+          <SeloPontos pontos={avaliacao.pontos} suficiente={avaliacao.suficiente} naoConta={!tabela.contaNaSoma} />
         </View>
       ))}
     </>
@@ -109,13 +106,15 @@ function TabelaEfetivo({ idade }: { idade: number }) {
         <Text style={estilos.colunaTitulo}>100 pts</Text>
       </View>
       {TABELAS_TAF3.map((t) => {
-        const suf = t.temSuficiencia ? valorParaPontos(t, idade, PONTOS_SUFICIENCIA) : null;
-        const max = valorParaPontos(t, idade, 100);
+        const suf = t.contaNaSoma && t.temSuficiencia ? valorParaPontos(t, idade, PONTOS_SUFICIENCIA) : null;
+        const max = t.contaNaSoma ? valorParaPontos(t, idade, 100) : null;
         return (
           <View key={t.exercicio} style={estilos.linha}>
             <View style={{ flex: 1 }}>
               <Text style={estilos.exercicio}>{t.nome}</Text>
-              <TextoSuave>faixa {rotuloFaixa(t, faixaDaIdade(t, idade))}</TextoSuave>
+              <TextoSuave>
+                {t.contaNaSoma ? `faixa ${rotuloFaixa(t, faixaDaIdade(t, idade))}` : 'não conta na pontuação'}
+              </TextoSuave>
             </View>
             <Text style={estilos.coluna}>{suf !== null ? formatarValor(t.unidade, suf) : '—'}</Text>
             <Text style={estilos.coluna}>{max !== null ? formatarValor(t.unidade, max) : '—'}</Text>
@@ -123,8 +122,8 @@ function TabelaEfetivo({ idade }: { idade: number }) {
         );
       })}
       <TextoSuave>
-        Aprovação: soma de {PONTOS_MINIMOS_TOTAL} pts nos 6 testes e ao menos 20 pts em cada um (natação não tem
-        mínimo). {EDITAL_TAF3.descricao}.
+        Aprovação: soma de {PONTOS_MINIMOS_TOTAL} pts nos {testesQueContam(TABELAS_TAF3)} testes e ao menos 20 pts em
+        cada um. Por enquanto a natação é só registrada: não soma nem reprova. {EDITAL_TAF3.descricao}.
       </TextoSuave>
     </Cartao>
   );

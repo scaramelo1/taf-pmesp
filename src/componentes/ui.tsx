@@ -111,10 +111,12 @@ export function Selo({ apto }: { apto: boolean }) {
   );
 }
 
-export function SeloPontos({ pontos, suficiente }: { pontos: number; suficiente: boolean }) {
+/** Pontos do teste; `naoConta` para teste fora da soma (natação do TAF-3). */
+export function SeloPontos({ pontos, suficiente, naoConta }: { pontos: number; suficiente: boolean; naoConta?: boolean }) {
+  const cor = naoConta ? cores.textoSuave : suficiente ? cores.apto : cores.inapto;
   return (
-    <View style={[estilos.selo, { backgroundColor: suficiente ? cores.apto : cores.inapto }]}>
-      <Text style={estilos.seloTexto}>{pontos} PTS</Text>
+    <View style={[estilos.selo, { backgroundColor: cor }]}>
+      <Text style={estilos.seloTexto}>{naoConta ? 'NÃO CONTA' : `${pontos} PTS`}</Text>
     </View>
   );
 }

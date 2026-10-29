@@ -160,6 +160,8 @@ export interface DesempenhoExercicio {
   tendencia: Tendencia | null;
   /** Fração de aptos já na 1ª tentativa (só candidato). */
   taxaDePrimeira: number | null;
+  /** false: teste fora da pontuação (natação do TAF-3); não vira ponto fraco. */
+  contaNaNota: boolean;
 }
 
 const media = (xs: number[]) => (xs.length ? xs.reduce((s, x) => s + x, 0) / xs.length : null);
@@ -181,6 +183,7 @@ function montarExercicio(
   serie: MarcaExercicio[],
   referencia: number | null,
   taxaDePrimeira: number | null,
+  contaNaNota = true,
 ): DesempenhoExercicio {
   const melhor = serie.reduce<MarcaExercicio | null>(
     (m, x) => (!m || (medida.direcao === 'maior' ? x.valor > m.valor : x.valor < m.valor) ? x : m),
@@ -199,6 +202,7 @@ function montarExercicio(
       serie.map((x) => x.valor),
     ),
     taxaDePrimeira,
+    contaNaNota,
   };
 }
 
@@ -221,6 +225,9 @@ export function exerciciosCandidato(recentesPrimeiro: TreinoAvaliado[], regras: 
   );
 }
 
+/** Tempo 0 marca teste não realizado (só onde a medida aceita zero). */
+export const realizado = (m: Medida, valor: number) => !(m.aceitaZero && valor === 0);
+
 /** Por teste do TAF-3; a linha de 20 pts usa a `idade` atual. */
 export function exerciciosEfetivo(
   recentesPrimeiro: TreinoAvaliado[],
@@ -233,17 +240,20 @@ export function exerciciosEfetivo(
       tabela,
       avs.flatMap((a) => {
         const e = a.av.exercicios.find((x) => x.tabela.exercicio === tabela.exercicio);
-        return e ? [{ data: a.treino.data, valor: e.avaliacao.valor, nota: e.avaliacao.pontos }] : [];
+        return e && realizado(e.tabela, e.avaliacao.valor)
+          ? [{ data: a.treino.data, valor: e.avaliacao.valor, nota: e.avaliacao.pontos }]
+          : [];
       }),
       tabela.temSuficiencia ? valorParaPontos(tabela, idade, PONTOS_SUFICIENCIA) : null,
       null,
+      tabela.contaNaSoma,
     ),
   );
 }
 
 /** Exercício com menor nota recente; null se menos de 2 exercícios têm dados. */
 export function pontoFraco(exercicios: DesempenhoExercicio[]): ExercicioId | null {
-  const comDados = exercicios.filter((e) => e.notaRecente !== null);
+  const comDados = exercicios.filter((e) => e.contaNaNota && e.notaRecente !== null);
   if (comDados.length < 2) return null;
   return comDados.reduce((a, b) => (b.notaRecente! < a.notaRecente! ? b : a)).medida.exercicio;
 }
@@ -252,7 +262,9 @@ export function pontoFraco(exercicios: DesempenhoExercicio[]): ExercicioId | nul
 export function marcasDoTreino(a: TreinoAvaliado): { medida: Medida; valor: number }[] {
   return a.modo === 'candidato'
     ? a.av.exercicios.map((e) => ({ medida: e.regra, valor: e.final.valor }))
-    : a.av.exercicios.map((e) => ({ medida: e.tabela, valor: e.avaliacao.valor }));
+    : a.av.exercicios.flatMap((e) =>
+        realizado(e.tabela, e.avaliacao.valor) ? [{ medida: e.tabela, valor: e.avaliacao.valor }] : [],
+      );
 }
 
 /** ▲▼ de cada exercício feito nos dois treinos, pelo valor bruto. */

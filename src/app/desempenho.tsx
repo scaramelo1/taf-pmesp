@@ -67,7 +67,9 @@ function CartaoExercicio({ ex, modo, fraco }: { ex: DesempenhoExercicio; modo: M
             <TextoSuave>
               {modo === 'candidato'
                 ? `margem ${formatarPercentual(ex.notaRecente!)}`
-                : `${Math.round(ex.notaRecente!)} pts em média`}
+                : ex.contaNaNota
+                  ? `${Math.round(ex.notaRecente!)} pts em média`
+                  : 'não conta na pontuação'}
             </TextoSuave>
           </Indicador>
           <Indicador rotulo="Tendência">

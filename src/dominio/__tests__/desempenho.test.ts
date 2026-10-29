@@ -166,6 +166,25 @@ describe('por exercício', () => {
     assert.equal(ex.find((e) => e.medida.exercicio === 'natacao50')!.referencia, null);
     assert.equal(pontoFraco(ex), 'apoio');
   });
+
+  it('efetivo: natação nunca é ponto fraco e tempo 0 fica fora do gráfico e das setas', () => {
+    const hist = montarHistorico(
+      [
+        treino('2026-10-22', { barra: 12, apoio: 32, natacao50: 0 }, EDITAL_TAF3.id),
+        treino('2026-10-20', { barra: 12, apoio: 32, natacao50: 85 }, EDITAL_TAF3.id),
+      ],
+      null,
+    );
+    const ex = exerciciosEfetivo(avaliadosDoModo(hist, 'efetivo'), 28);
+    const natacao = ex.find((e) => e.medida.exercicio === 'natacao50')!;
+    assert.deepEqual(
+      natacao.serie.map((m) => m.valor),
+      [85],
+    );
+    assert.notEqual(pontoFraco(ex), 'natacao50');
+    assert.equal(hist[0].variacao, 0); // natação não mexe na soma
+    assert.equal(compararExercicios(hist[0].avaliado!, hist[1].avaliado!).has('natacao50'), false);
+  });
 });
 
 describe('tendenciaSerie', () => {

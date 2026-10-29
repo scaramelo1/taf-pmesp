@@ -37,7 +37,7 @@ export function lerEntrada(regra: Medida, e: Entrada): number | null | undefined
     valor = lerValor(regra.unidade, e.texto);
   }
 
-  // Tempo de corrida/natação zerado não existe.
-  if (valor !== null && regra.direcao === 'menor' && valor <= 0) return null;
+  // Tempo zerado não existe, exceto onde 0 marca "não realizado".
+  if (valor !== null && regra.direcao === 'menor' && (regra.aceitaZero ? valor < 0 : valor <= 0)) return null;
   return valor;
 }

@@ -9,6 +9,7 @@ import type { Tendencia } from '../../dominio/avaliacao';
 import { formatarData } from '../../dominio/datas';
 import { compararExercicios, type TreinoAvaliado } from '../../dominio/desempenho';
 import { descreverDiferenca, formatarValor, formatarVariacao } from '../../dominio/formato';
+import { descreverPontos } from '../../dominio/pontuacao';
 import { regrasDoTreino, TABELAS_TAF3 } from '../../dominio/regras';
 import { PONTOS_MINIMOS_TOTAL } from '../../dominio/regras/taf3';
 import type { ExercicioId, Medida } from '../../dominio/tipos';
@@ -60,13 +61,9 @@ function Exercicios({ avaliado, setas }: { avaliado: TreinoAvaliado; setas: Map<
       key={tabela.exercicio}
       nome={tabela.nome}
       valor={formatarValor(tabela.unidade, avaliacao.valor)}
-      detalhe={
-        avaliacao.proximo
-          ? `${descreverDiferenca(tabela, -avaliacao.proximo.falta)} p/ ${avaliacao.proximo.pontos} pts`
-          : 'pontuação máxima'
-      }
+      detalhe={descreverPontos(tabela, avaliacao)}
       seta={setas.get(tabela.exercicio)}
-      selo={<SeloPontos pontos={avaliacao.pontos} suficiente={avaliacao.suficiente} />}
+      selo={<SeloPontos pontos={avaliacao.pontos} suficiente={avaliacao.suficiente} naoConta={!tabela.contaNaSoma} />}
     />
   ));
 }

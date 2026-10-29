@@ -5,6 +5,7 @@ import assert from 'node:assert/strict';
 import { diasEntre, erroDataTreino, formatarData, hojeISO, lerData, mascararData } from '../datas.ts';
 import { ENTRADA_VAZIA, lerEntrada, tipoEntrada } from '../entrada.ts';
 import { regrasCandidato } from '../regras/candidato.ts';
+import { TABELAS_TAF3 } from '../regras/taf3.ts';
 import type { ExercicioId } from '../tipos.ts';
 
 const masc = regrasCandidato('M', 'oficial');
@@ -47,6 +48,9 @@ describe('lerEntrada', () => {
     assert.equal(lerEntrada(regra('corrida2400'), minseg('12', '30')), 750);
     assert.equal(lerEntrada(regra('corrida2400'), minseg('13', '0')), 780);
     assert.equal(lerEntrada(regra('natacao50'), minseg('', '58')), 58);
+    const natacaoTaf3 = TABELAS_TAF3.find((t) => t.exercicio === 'natacao50')!;
+    assert.equal(lerEntrada(natacaoTaf3, minseg('0', '0')), 0);
+    assert.equal(lerEntrada(natacaoTaf3, minseg('', '0')), 0);
     assert.equal(lerEntrada(regra('corrida2400'), minseg('12', '60')), null);
     assert.equal(lerEntrada(regra('corrida2400'), minseg('12', '')), null);
     assert.equal(lerEntrada(regra('corrida2400'), minseg('0', '0')), null);

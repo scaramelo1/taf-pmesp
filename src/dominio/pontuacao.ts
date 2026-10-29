@@ -1,3 +1,4 @@
+import { descreverDiferenca } from './formato.ts';
 import { PONTOS_MINIMOS_TOTAL, PONTOS_SUFICIENCIA, type TabelaPontos } from './regras/taf3.ts';
 import type { ExercicioId, ResultadoRegistrado } from './tipos.ts';
 
@@ -20,7 +21,7 @@ export interface AvaliacaoTreinoPontos {
   soma: number;
   /** Pontos que faltam para a soma mínima (0 se já atingiu). */
   faltaTotal: number;
-  /** Média dos pontos dos testes feitos; null se nenhum. */
+  /** Média dos pontos dos testes feitos que contam na soma; null se nenhum. */
   media: number | null;
 }
 
@@ -44,7 +45,8 @@ export function nivelAtingido(t: TabelaPontos, valor: number): number {
 
 export function avaliarPontos(t: TabelaPontos, idade: number, valor: number): AvaliacaoPontos {
   const faixa = faixaDaIdade(t, idade);
-  const nivel = nivelAtingido(t, valor);
+  // Tempo 0 (natação não realizada) não alcança nenhuma linha.
+  const nivel = t.direcao === 'menor' && valor <= 0 ? -1 : nivelAtingido(t, valor);
 
   // Melhor pontuação entre as linhas alcançadas: acima da última célula preenchida
   // da faixa (ex.: 56+ a partir da linha 11) continua valendo 100.
@@ -71,6 +73,15 @@ export function valorParaPontos(t: TabelaPontos, idade: number, pontos: number):
   return i === -1 ? null : t.niveis[i];
 }
 
+/** "faltam 2 reps p/ 50 pts", "pontuação máxima" ou, fora da soma, se a natação foi feita. */
+export function descreverPontos(t: TabelaPontos, av: AvaliacaoPontos): string {
+  if (!t.contaNaSoma) return av.valor === 0 ? 'não realizada' : 'não conta na pontuação';
+  return av.proximo ? `${descreverDiferenca(t, -av.proximo.falta)} p/ ${av.proximo.pontos} pts` : 'pontuação máxima';
+}
+
+/** Testes que entram na soma do TAF-3. */
+export const testesQueContam = (tabelas: TabelaPontos[]) => tabelas.filter((t) => t.contaNaSoma).length;
+
 /** Avalia só a 1ª tentativa de cada teste (o TAF-3 não prevê reteste). */
 export function avaliarTreinoPontos(
   tabelas: TabelaPontos[],
@@ -82,19 +93,20 @@ export function avaliarTreinoPontos(
   for (const tabela of tabelas) {
     const r = resultados.find((x) => x.exercicio === tabela.exercicio && x.tentativa === 1);
     if (r) exercicios.push({ tabela, avaliacao: avaliarPontos(tabela, idade, r.valor) });
-    else pendentes.push(tabela.exercicio);
+    else if (tabela.contaNaSoma) pendentes.push(tabela.exercicio);
   }
 
-  const soma = exercicios.reduce((s, e) => s + e.avaliacao.pontos, 0);
+  const contam = exercicios.filter((e) => e.tabela.contaNaSoma);
+  const soma = contam.reduce((s, e) => s + e.avaliacao.pontos, 0);
   const completo = pendentes.length === 0;
   const faltaTotal = Math.max(0, PONTOS_MINIMOS_TOTAL - soma);
   return {
     exercicios,
     pendentes,
     completo,
-    aptoGeral: completo && faltaTotal === 0 && exercicios.every((e) => e.avaliacao.suficiente),
+    aptoGeral: completo && faltaTotal === 0 && contam.every((e) => e.avaliacao.suficiente),
     soma,
     faltaTotal,
-    media: exercicios.length ? soma / exercicios.length : null,
+    media: contam.length ? soma / contam.length : null,
   };
 }

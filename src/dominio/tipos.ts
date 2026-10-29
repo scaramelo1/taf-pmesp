@@ -13,6 +13,8 @@ export interface Medida {
   nome: string;
   unidade: Unidade;
   direcao: Direcao;
+  /** Aceita 0 como resultado (natação do TAF-3, que ainda não pontua). */
+  aceitaZero?: boolean;
 }
 
 export interface RegraMinimo extends Medida {

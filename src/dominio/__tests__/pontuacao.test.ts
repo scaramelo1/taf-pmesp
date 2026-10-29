@@ -148,13 +148,13 @@ describe('avaliarTreinoPontos', () => {
       r('apoio', 14), // 20
       r('corrida50', 9.2), // 20
       r('corrida2400', 840), // 20
-      r('natacao50', 90), // 0, mas não reprova
+      r('natacao50', 90), // não conta
     ]);
     assert.equal(av.completo, true);
     assert.equal(av.aptoGeral, false);
     assert.equal(av.soma, 100);
     assert.equal(av.faltaTotal, 151);
-    assert.ok(Math.abs(av.media! - 100 / 6) < 1e-9);
+    assert.equal(av.media, 20); // média só dos 5 que contam
   });
 
   it('apto com soma ≥ 251 e suficiência em todos', () => {
@@ -192,7 +192,29 @@ describe('avaliarTreinoPontos', () => {
     const av = avaliarTreinoPontos(TABELAS_TAF3, 28, [r('barra', 2)]);
     assert.equal(av.completo, false);
     assert.equal(av.aptoGeral, false);
-    assert.equal(av.pendentes.length, 5);
+    assert.equal(av.pendentes.length, 4); // natação não fica pendente
     assert.equal(av.exercicios[0].avaliacao.suficiente, false);
+  });
+
+  it('natação não soma, não reprova, é opcional e aceita 0', () => {
+    const base = [
+      r('barra', 7), // 60
+      r('abdominal', 40), // 50
+      r('apoio', 22), // 60
+      r('corrida50', 8.3), // 50
+      r('corrida2400', 780), // 40
+    ];
+    const rapida = avaliarTreinoPontos(TABELAS_TAF3, 28, [...base, r('natacao50', 35)]); // valeria 100
+    assert.equal(rapida.soma, 260);
+    assert.equal(rapida.aptoGeral, true);
+
+    const sem = avaliarTreinoPontos(TABELAS_TAF3, 28, base);
+    assert.equal(sem.completo, true);
+    assert.equal(sem.aptoGeral, true);
+    assert.deepEqual(sem.pendentes, []);
+
+    const zero = avaliarTreinoPontos(TABELAS_TAF3, 28, [...base, r('natacao50', 0)]);
+    assert.equal(zero.soma, 260);
+    assert.equal(zero.exercicios.find((e) => e.tabela.exercicio === 'natacao50')!.avaliacao.pontos, 0);
   });
 });
