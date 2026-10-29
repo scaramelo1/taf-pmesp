@@ -31,7 +31,7 @@ export default function Historico() {
             {historico.length} {historico.length === 1 ? 'treino' : 'treinos'} · ▲▼ em relação ao treino anterior.
             Toque para ver o detalhe; segure para excluir.
           </TextoSuave>
-        ) : null
+        ) : undefined
       }
       ListEmptyComponent={
         <Cartao>
