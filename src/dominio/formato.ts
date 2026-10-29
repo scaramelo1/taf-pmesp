@@ -1,4 +1,4 @@
-import type { Medida, Unidade } from './tipos.ts';
+import type { Medida, Modo, Unidade } from './tipos.ts';
 
 /**
  * Lê um tempo digitado e devolve segundos.
@@ -55,4 +55,21 @@ export function descreverDiferenca(regra: Pick<Medida, 'unidade'>, diferenca: nu
 export function formatarPercentual(fracao: number): string {
   const p = Math.round(fracao * 1000) / 10;
   return `${p > 0 ? '+' : ''}${String(p).replace('.', ',')}%`;
+}
+
+/** Nota geral de um treino: margem média (candidato) ou soma de pontos (efetivo). */
+export function formatarNota(modo: Modo, nota: number): string {
+  return modo === 'candidato' ? formatarPercentual(nota) : `${Math.round(nota)} pts`;
+}
+
+/** Diferença de nota entre treinos, sempre com sinal: "+1,5%", "-10 pts". */
+export function formatarVariacao(modo: Modo, variacao: number): string {
+  if (modo === 'candidato') return formatarPercentual(variacao);
+  const v = Math.round(variacao);
+  return `${v > 0 ? '+' : ''}${v} pts`;
+}
+
+/** Marca curta para eixo de gráfico: "12", "8,25 s", "13:00". */
+export function formatarEixo(unidade: Unidade, valor: number): string {
+  return unidade === 'segundos' ? formatarTempo(valor) : String(Math.round(valor));
 }

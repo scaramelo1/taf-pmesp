@@ -10,7 +10,14 @@ Dois modos, escolhidos no perfil:
   faixa etária na data do treino; aprovação com soma ≥ 251 pts e ao menos
   20 pts em cada teste (natação não tem mínimo).
 
-Expo SDK 58 · Expo Router · expo-sqlite (dados ficam só no aparelho).
+**Histórico** lista os treinos com ▲▼ em relação ao anterior, abre o detalhe e
+permite excluir. **Desempenho** mostra a evolução (margem média ou pontos), treinos
+aptos, "pronto para a prova" (3 treinos seguidos aptos), recorde e, por teste,
+gráfico com a linha do mínimo/20 pts, melhor marca, média recente, tendência,
+aprovação de primeira e o ponto fraco.
+
+Expo SDK 58 · Expo Router · expo-sqlite (dados ficam só no aparelho) ·
+gráficos com react-native-gifted-charts (react-native-svg + expo-linear-gradient).
 
 ## Rodar no seu PC
 
@@ -44,8 +51,10 @@ que gera `.apk`. O perfil `production` gera `.aab` para a Play Store.
 src/
   app/          telas (Expo Router: cada arquivo é uma rota)
   componentes/  componentes reutilizáveis
+  telas/        telas grandes usadas por mais de uma rota
+  hooks/        carregamento de dados (useHistorico)
   db/           migrações e acesso ao SQLite
-  dominio/      regras do TAF, avaliação e formatação (testado)
+  dominio/      regras do TAF, avaliação, desempenho e formatação (testado)
     regras/     índices por edital
 ```
 

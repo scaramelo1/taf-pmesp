@@ -41,3 +41,9 @@ export function idadeEm(nascimento: string, em: string): number {
   const [ae, me, de] = em.split('-').map(Number);
   return ae - an - (me < mn || (me === mn && de < dn) ? 1 : 0);
 }
+
+/** "2026-10-28" → "28/10" */
+export function formatarDataCurta(iso: string): string {
+  const [, mes, dia] = iso.split('-');
+  return `${dia}/${mes}`;
+}

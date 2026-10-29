@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View, type TextInputProps, type ViewStyle } from 'react-native';
 
+import type { Tendencia } from '../dominio/avaliacao';
 import { cores, espaco } from '../tema';
 
 export function Cartao({ children, style }: { children: ReactNode; style?: ViewStyle }) {
@@ -81,10 +82,11 @@ export function Botao({
 }: {
   titulo: string;
   onPress: () => void;
-  variante?: 'primario' | 'secundario';
+  variante?: 'primario' | 'secundario' | 'perigo';
   desabilitado?: boolean;
 }) {
   const primario = variante === 'primario';
+  const corTexto = variante === 'perigo' ? cores.inapto : cores.primaria;
   return (
     <Pressable
       onPress={onPress}
@@ -92,11 +94,11 @@ export function Botao({
       accessibilityRole="button"
       style={({ pressed }) => [
         estilos.botao,
-        primario ? estilos.botaoPrimario : estilos.botaoSecundario,
+        primario ? estilos.botaoPrimario : [estilos.botaoSecundario, { borderColor: corTexto }],
         (pressed || desabilitado) && { opacity: desabilitado ? 0.4 : 0.8 },
       ]}
     >
-      <Text style={[estilos.botaoTexto, !primario && { color: cores.primaria }]}>{titulo}</Text>
+      <Text style={[estilos.botaoTexto, !primario && { color: corTexto }]}>{titulo}</Text>
     </Pressable>
   );
 }
@@ -114,6 +116,24 @@ export function SeloPontos({ pontos, suficiente }: { pontos: number; suficiente:
     <View style={[estilos.selo, { backgroundColor: suficiente ? cores.apto : cores.inapto }]}>
       <Text style={estilos.seloTexto}>{pontos} PTS</Text>
     </View>
+  );
+}
+
+const SETAS: Record<Tendencia, { simbolo: string; cor: string; rotulo: string }> = {
+  melhorou: { simbolo: '▲', cor: cores.apto, rotulo: 'melhorou' },
+  piorou: { simbolo: '▼', cor: cores.inapto, rotulo: 'piorou' },
+  manteve: { simbolo: '=', cor: cores.textoSuave, rotulo: 'manteve' },
+};
+
+/** ▲ melhorou, ▼ piorou, = manteve; `texto` vem ao lado da seta (ex.: "+12 pts"). */
+export function SetaTendencia({ tendencia, texto }: { tendencia: Tendencia | null; texto?: string }) {
+  if (!tendencia) return null;
+  const s = SETAS[tendencia];
+  return (
+    <Text style={[estilos.seta, { color: s.cor }]} accessibilityLabel={texto ? `${s.rotulo}, ${texto}` : s.rotulo}>
+      {s.simbolo}
+      {texto ? ` ${texto}` : ''}
+    </Text>
   );
 }
 
@@ -164,5 +184,6 @@ export const estilos = StyleSheet.create({
   botaoTexto: { color: '#fff', fontSize: 16, fontWeight: '700' },
   selo: { borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3 },
   seloTexto: { color: '#fff', fontSize: 12, fontWeight: '800' },
+  seta: { fontSize: 13, fontWeight: '700' },
   detalhe: { fontSize: 13, color: cores.textoSuave, textAlign: 'right' },
 });

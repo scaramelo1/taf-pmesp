@@ -1,5 +1,7 @@
 export type Sexo = 'M' | 'F';
 export type Cargo = 'soldado' | 'oficial';
+/** Candidato: apto/inapto por índice mínimo. Efetivo: pontos do TAF-3. */
+export type Modo = 'candidato' | 'efetivo';
 export type Unidade = 'reps' | 'segundos';
 /** 'maior': quanto mais, melhor (repetições). 'menor': quanto menos, melhor (tempo). */
 export type Direcao = 'maior' | 'menor';

@@ -27,7 +27,11 @@ export default function RootLayout() {
       >
         <Tabs.Screen name="index" options={{ title: 'Início', headerTitle: 'ReadyTAF', tabBarIcon: icone('home') }} />
         <Tabs.Screen name="novo-treino" options={{ title: 'Novo treino', tabBarIcon: icone('add-circle') }} />
-        <Tabs.Screen name="historico" options={{ title: 'Histórico', tabBarIcon: icone('list') }} />
+        <Tabs.Screen
+          name="historico"
+          options={{ title: 'Histórico', headerShown: false, tabBarIcon: icone('list') }}
+        />
+        <Tabs.Screen name="desempenho" options={{ title: 'Desempenho', tabBarIcon: icone('stats-chart') }} />
         <Tabs.Screen name="perfil" options={{ title: 'Perfil', tabBarIcon: icone('person') }} />
       </Tabs>
     </SQLiteProvider>

@@ -126,7 +126,7 @@ export function compararTreinos(
 }
 
 /** Pronto quando os últimos `n` treinos (do mais recente) foram completos e todos aptos. */
-export function prontoParaProva(avaliacoesRecentesPrimeiro: AvaliacaoTreino[], n = 3): boolean {
+export function prontoParaProva(avaliacoesRecentesPrimeiro: Pick<AvaliacaoTreino, 'aptoGeral'>[], n = 3): boolean {
   const ultimos = avaliacoesRecentesPrimeiro.slice(0, n);
   return ultimos.length === n && ultimos.every((a) => a.aptoGeral);
 }

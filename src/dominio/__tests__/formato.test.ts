@@ -4,9 +4,12 @@ import assert from 'node:assert/strict';
 
 import {
   descreverDiferenca,
+  formatarEixo,
+  formatarNota,
   formatarPercentual,
   formatarTempo,
   formatarValor,
+  formatarVariacao,
   lerTempo,
   lerValor,
 } from '../formato.ts';
@@ -78,5 +81,19 @@ describe('descreverDiferenca', () => {
     assert.equal(formatarPercentual(4 / 36), '+11,1%');
     assert.equal(formatarPercentual(-0.05), '-5%');
     assert.equal(formatarPercentual(0), '0%');
+  });
+
+  it('notas e variações do histórico', () => {
+    assert.equal(formatarNota('candidato', 0.052), '+5,2%');
+    assert.equal(formatarNota('efetivo', 245), '245 pts');
+    assert.equal(formatarVariacao('efetivo', 12), '+12 pts');
+    assert.equal(formatarVariacao('efetivo', -10), '-10 pts');
+    assert.equal(formatarVariacao('efetivo', 0), '0 pts');
+  });
+
+  it('marcas do eixo', () => {
+    assert.equal(formatarEixo('reps', 12.0000001), '12');
+    assert.equal(formatarEixo('segundos', 780), '13:00');
+    assert.equal(formatarEixo('segundos', 8.25), '8,25 s');
   });
 });

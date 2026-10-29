@@ -1,8 +1,8 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
 
-import type { Cargo, ExercicioId, ResultadoRegistrado, Sexo } from '../dominio/tipos';
+import type { Cargo, ExercicioId, Modo, ResultadoRegistrado, Sexo } from '../dominio/tipos';
 
-export type Modo = 'candidato' | 'efetivo';
+export type { Modo };
 
 export interface Perfil {
   nome: string;
