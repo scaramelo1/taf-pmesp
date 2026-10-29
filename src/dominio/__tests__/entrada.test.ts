@@ -2,7 +2,7 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { diasEntre, formatarData, hojeISO, lerData, mascararData } from '../datas.ts';
+import { diasEntre, erroDataTreino, formatarData, hojeISO, lerData, mascararData } from '../datas.ts';
 import { ENTRADA_VAZIA, lerEntrada, tipoEntrada } from '../entrada.ts';
 import { regrasCandidato } from '../regras/candidato.ts';
 import type { ExercicioId } from '../tipos.ts';
@@ -61,6 +61,14 @@ describe('datas', () => {
     assert.equal(lerData('31/04/2026'), null);
     assert.equal(lerData('28/10/26'), null);
     assert.equal(lerData(''), null);
+  });
+
+  it('erroDataTreino recusa futuro e antes do nascimento', () => {
+    assert.equal(erroDataTreino('29/10/2026', '2026-10-29'), undefined);
+    assert.equal(erroDataTreino('01/01/2020', '2026-10-29', '1990-05-10'), undefined);
+    assert.equal(erroDataTreino('30/10/2026', '2026-10-29'), 'A data não pode estar no futuro');
+    assert.equal(erroDataTreino('01/01/1989', '2026-10-29', '1990-05-10'), 'A data é anterior ao seu nascimento');
+    assert.equal(erroDataTreino('31/02/2026', '2026-10-29'), 'Data inválida (DD/MM/AAAA)');
   });
 
   it('formatarData e máscara', () => {

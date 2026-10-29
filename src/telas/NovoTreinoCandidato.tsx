@@ -8,7 +8,7 @@ import { CartaoData, CartaoObservacao } from '../componentes/CamposTreino';
 import { Botao, Cartao, Detalhe, Selo, estilos as ui, TextoSuave } from '../componentes/ui';
 import { criarTreino, type Perfil } from '../db/repositorio';
 import { avaliarTreino, avaliarValor, type AvaliacaoTentativa } from '../dominio/avaliacao';
-import { formatarData, hojeISO, idadeEm, lerData } from '../dominio/datas';
+import { erroDataTreino, formatarData, hojeISO, idadeEm, lerData } from '../dominio/datas';
 import { ENTRADA_VAZIA, lerEntrada, type Entrada } from '../dominio/entrada';
 import { descreverDiferenca, formatarPercentual, formatarValor } from '../dominio/formato';
 import { EDITAL_CANDIDATO, regrasDoTreino } from '../dominio/regras';
@@ -61,7 +61,8 @@ export function NovoTreinoCandidato({ perfil }: { perfil: Perfil }) {
     ...(typeof v2 === 'number' ? [{ exercicio: regra.exercicio, valor: v2, tentativa: 2 as const }] : []),
   ]);
   const temInvalido = leituras.some((l) => l.v1 === null || l.v2 === null);
-  const dataISO = lerData(data);
+  const erroData = erroDataTreino(data, hojeISO(), perfil.dataNascimento);
+  const dataISO = erroData ? null : lerData(data);
   const avaliacao = avaliarTreino(regras, resultados);
 
   async function salvar() {
@@ -96,7 +97,7 @@ export function NovoTreinoCandidato({ perfil }: { perfil: Perfil }) {
       keyboardShouldPersistTaps="handled"
       automaticallyAdjustKeyboardInsets
     >
-      <CartaoData data={data} onChange={setData} valida={!!dataISO} />
+      <CartaoData data={data} onChange={setData} erro={erroData} />
 
       {leituras.map(({ regra, st, v1, av1, podeReteste, v2, av2 }) => (
         <Cartao key={regra.exercicio}>

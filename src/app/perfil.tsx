@@ -5,7 +5,7 @@ import { Alert, ScrollView } from 'react-native';
 
 import { Botao, Campo, Cartao, estilos, Rotulo, Segmentado, TextoSuave } from '../componentes/ui';
 import { obterPerfil, salvarPerfil, type Modo } from '../db/repositorio';
-import { formatarData, lerData, mascararData } from '../dominio/datas';
+import { formatarData, hojeISO, lerData, mascararData } from '../dominio/datas';
 import type { Cargo, Sexo } from '../dominio/tipos';
 
 /** Valida um campo de data opcional: vazio é aceito. */
@@ -35,7 +35,10 @@ export default function PerfilTela() {
 
   const efetivo = modo === 'efetivo';
   // No TAF-3 a idade define a faixa de pontos, então a data de nascimento é obrigatória.
-  const erroNascimento = efetivo && !nascimento ? 'Obrigatória no modo Policial' : erroData(nascimento);
+  const erroNascimento =
+    efetivo && !nascimento
+      ? 'Obrigatória no modo Policial'
+      : (erroData(nascimento) ?? ((lerData(nascimento) ?? '') > hojeISO() ? 'A data não pode estar no futuro' : undefined));
   const erroProva = erroData(prova);
 
   async function salvar() {

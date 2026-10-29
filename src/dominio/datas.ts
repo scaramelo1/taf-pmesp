@@ -47,3 +47,12 @@ export function formatarDataCurta(iso: string): string {
   const [, mes, dia] = iso.split('-');
   return `${dia}/${mes}`;
 }
+
+/** Erro da data do treino: inválida, no futuro ou antes do nascimento; undefined se ok. */
+export function erroDataTreino(texto: string, hoje: string, nascimento: string | null = null): string | undefined {
+  const iso = lerData(texto);
+  if (!iso) return 'Data inválida (DD/MM/AAAA)';
+  if (iso > hoje) return 'A data não pode estar no futuro';
+  if (nascimento && iso <= nascimento) return 'A data é anterior ao seu nascimento';
+  return undefined;
+}

@@ -7,7 +7,7 @@ import { CampoExercicio } from '../componentes/CampoExercicio';
 import { CartaoData, CartaoObservacao } from '../componentes/CamposTreino';
 import { Botao, Cartao, Detalhe, SeloPontos, estilos as ui, TextoSuave } from '../componentes/ui';
 import { criarTreino, type Perfil } from '../db/repositorio';
-import { formatarData, hojeISO, idadeEm, lerData } from '../dominio/datas';
+import { erroDataTreino, formatarData, hojeISO, idadeEm, lerData } from '../dominio/datas';
 import { ENTRADA_VAZIA, lerEntrada, type Entrada } from '../dominio/entrada';
 import { descreverDiferenca, formatarValor } from '../dominio/formato';
 import { avaliarPontos, avaliarTreinoPontos, faixaDaIdade, valorParaPontos } from '../dominio/pontuacao';
@@ -24,7 +24,8 @@ export function NovoTreinoEfetivo({ perfil, nascimento }: { perfil: Perfil; nasc
   const [entradas, setEntradas] = useState<Partial<Record<ExercicioId, Entrada>>>({});
   const [salvando, setSalvando] = useState(false);
 
-  const dataISO = lerData(data);
+  const erroData = erroDataTreino(data, hojeISO(), nascimento);
+  const dataISO = erroData ? null : lerData(data);
   const idade = idadeEm(nascimento, dataISO ?? hojeISO());
 
   const leituras = TABELAS_TAF3.map((tabela) => {
@@ -73,7 +74,7 @@ export function NovoTreinoEfetivo({ perfil, nascimento }: { perfil: Perfil; nasc
       keyboardShouldPersistTaps="handled"
       automaticallyAdjustKeyboardInsets
     >
-      <CartaoData data={data} onChange={setData} valida={!!dataISO} />
+      <CartaoData data={data} onChange={setData} erro={erroData} />
 
       {leituras.map(({ tabela, entrada, valor, av }) => {
         const suficiencia = tabela.temSuficiencia ? valorParaPontos(tabela, idade, PONTOS_SUFICIENCIA) : null;

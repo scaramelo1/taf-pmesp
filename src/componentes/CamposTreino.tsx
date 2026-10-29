@@ -1,7 +1,7 @@
 import { mascararData } from '../dominio/datas';
 import { Campo, Cartao, TextoSuave } from './ui';
 
-export function CartaoData({ data, onChange, valida }: { data: string; onChange: (d: string) => void; valida: boolean }) {
+export function CartaoData({ data, onChange, erro }: { data: string; onChange: (d: string) => void; erro?: string }) {
   return (
     <Cartao>
       <Campo
@@ -11,7 +11,7 @@ export function CartaoData({ data, onChange, valida }: { data: string; onChange:
         placeholder="DD/MM/AAAA"
         keyboardType="number-pad"
         maxLength={10}
-        erro={valida ? undefined : 'Data inválida (DD/MM/AAAA)'}
+        erro={erro}
       />
       <TextoSuave>Preencha só os testes que fez hoje.</TextoSuave>
     </Cartao>
