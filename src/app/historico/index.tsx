@@ -16,8 +16,8 @@ export default function Historico() {
   if (!dados) return <View style={ui.tela} />;
 
   const { perfil, historico } = dados;
-  // Só identifica o modo na linha quando há treinos dos dois.
-  const misturado = new Set(historico.map((h) => h.modo)).size > 1;
+  // Só identifica modo e sexo na linha quando há treinos de mais de um.
+  const misturado = new Set(historico.map((h) => `${h.modo}-${h.treino.sexo}`)).size > 1;
 
   return (
     <FlatList
@@ -60,7 +60,11 @@ export default function Historico() {
           <View style={estilos.linha}>
             <View style={{ flex: 1 }}>
               <TextoSuave>{resumoTreino(h.avaliado)}</TextoSuave>
-              {misturado && <Text style={estilos.modo}>{h.modo === 'efetivo' ? 'Policial (TAF-3)' : 'Candidato'}</Text>}
+              {misturado && (
+                <Text style={estilos.modo}>
+                  {h.modo === 'efetivo' ? 'Policial (TAF-3)' : 'Candidato'} · {h.treino.sexo === 'M' ? 'masculino' : 'feminino'}
+                </Text>
+              )}
             </View>
             <SeloTreino avaliado={h.avaliado} />
           </View>

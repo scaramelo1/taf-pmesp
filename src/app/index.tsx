@@ -12,6 +12,7 @@ import { avaliarTreinoPontos, descreverPontos, faixaDaIdade, testesQueContam, va
 import { EDITAL_CANDIDATO, EDITAL_TAF3, ehEfetivo, regrasDoTreino, TABELAS_TAF3 } from '../dominio/regras';
 import { regrasCandidato } from '../dominio/regras/candidato';
 import { PONTOS_MINIMOS_TOTAL, PONTOS_SUFICIENCIA, rotuloFaixa } from '../dominio/regras/taf3';
+import type { Sexo } from '../dominio/tipos';
 import { cores, espaco } from '../tema';
 
 function UltimoCandidato({ treino }: { treino: Treino }) {
@@ -38,7 +39,7 @@ function UltimoCandidato({ treino }: { treino: Treino }) {
 }
 
 function UltimoEfetivo({ treino, idade }: { treino: Treino; idade: number }) {
-  const av = avaliarTreinoPontos(TABELAS_TAF3, idade, treino.resultados);
+  const av = avaliarTreinoPontos(TABELAS_TAF3[treino.sexo], idade, treino.resultados);
   return (
     <>
       <Text style={estilos.resumo}>
@@ -94,7 +95,8 @@ function IndicesCandidato({ perfil }: { perfil: Perfil | null }) {
   );
 }
 
-function TabelaEfetivo({ idade }: { idade: number }) {
+function TabelaEfetivo({ idade, sexo }: { idade: number; sexo: Sexo }) {
+  const tabelas = TABELAS_TAF3[sexo];
   return (
     <Cartao>
       <Titulo>Sua tabela ({idade} anos)</Titulo>
@@ -103,7 +105,7 @@ function TabelaEfetivo({ idade }: { idade: number }) {
         <Text style={estilos.colunaTitulo}>20 pts</Text>
         <Text style={estilos.colunaTitulo}>100 pts</Text>
       </View>
-      {TABELAS_TAF3.map((t) => {
+      {tabelas.map((t) => {
         const suf = t.contaNaSoma && t.temSuficiencia ? valorParaPontos(t, idade, PONTOS_SUFICIENCIA) : null;
         const max = t.contaNaSoma ? valorParaPontos(t, idade, 100) : null;
         return (
@@ -120,8 +122,8 @@ function TabelaEfetivo({ idade }: { idade: number }) {
         );
       })}
       <TextoSuave>
-        Aprovação: soma de {PONTOS_MINIMOS_TOTAL} pts nos {testesQueContam(TABELAS_TAF3)} testes e ao menos 20 pts em
-        cada um. Por enquanto a natação é só registrada: não soma nem reprova. {EDITAL_TAF3.descricao}.
+        Aprovação: soma de {PONTOS_MINIMOS_TOTAL} pts nos {testesQueContam(tabelas)} testes e ao menos 20 pts em
+        cada um. Por enquanto a natação é só registrada: não soma nem reprova. {EDITAL_TAF3[sexo].descricao}.
       </TextoSuave>
     </Cartao>
   );
@@ -197,8 +199,8 @@ export default function Inicio() {
       )}
 
       {efetivo ? (
-        idadeHoje !== null ? (
-          <TabelaEfetivo idade={idadeHoje} />
+        perfil && idadeHoje !== null ? (
+          <TabelaEfetivo idade={idadeHoje} sexo={perfil.sexo} />
         ) : (
           <Cartao>
             <TextoSuave>Informe sua data de nascimento no perfil para ver sua tabela do TAF-3.</TextoSuave>

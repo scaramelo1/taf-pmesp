@@ -61,7 +61,7 @@ export function avaliarTreinoSalvo<T extends TreinoBase>(t: T, nascimento: strin
   }
   const idade = t.idade ?? (nascimento ? idadeEm(nascimento, t.data) : null);
   if (idade === null) return null;
-  const av = avaliarTreinoPontos(TABELAS_TAF3, idade, t.resultados);
+  const av = avaliarTreinoPontos(TABELAS_TAF3[t.sexo], idade, t.resultados);
   return {
     modo: 'efetivo',
     treino: t,
@@ -81,7 +81,7 @@ function compararNotas(modo: Modo, atual: number, anterior: number): { tendencia
 
 /**
  * Treinos do mais recente para o mais antigo. Um completo é comparado ao completo anterior
- * do mesmo modo; um avulso (só alguns testes) não entra na nota geral, porque somar 1 teste
+ * do mesmo modo e sexo (as tabelas e até as unidades mudam); um avulso (só alguns testes) não entra na nota geral, porque somar 1 teste
  * contra 5 não diz nada.
  */
 export function montarHistorico<T extends TreinoBase>(
@@ -92,7 +92,9 @@ export function montarHistorico<T extends TreinoBase>(
   return recentesPrimeiro.map((treino, i) => {
     const modo = modoDoTreino(treino);
     const avaliado = avaliados[i];
-    const anteriores = avaliados.slice(i + 1).filter((a): a is TreinoAvaliado<T> => a?.modo === modo);
+    const anteriores = avaliados
+      .slice(i + 1)
+      .filter((a): a is TreinoAvaliado<T> => a?.modo === modo && a.treino.sexo === treino.sexo);
     let tendencia: Tendencia | null = null;
     let variacao: number | null = null;
     let comparadoCom: T | null = null;
@@ -119,9 +121,13 @@ export function montarHistorico<T extends TreinoBase>(
   });
 }
 
-/** Avaliações de um modo, do mais recente para o mais antigo (entrada de desempenhoGeral/porExercicio). */
-export function avaliadosDoModo<T extends TreinoBase>(historico: ItemHistorico<T>[], modo: Modo): TreinoAvaliado<T>[] {
-  return historico.flatMap((h) => (h.avaliado && h.modo === modo ? [h.avaliado] : []));
+/** Avaliações de um modo e sexo, do mais recente para o mais antigo (entrada de desempenhoGeral/porExercicio). */
+export function avaliadosDoModo<T extends TreinoBase>(
+  historico: ItemHistorico<T>[],
+  modo: Modo,
+  sexo: Sexo,
+): TreinoAvaliado<T>[] {
+  return historico.flatMap((h) => (h.avaliado && h.modo === modo && h.treino.sexo === sexo ? [h.avaliado] : []));
 }
 
 export interface PontoSerie {
@@ -259,7 +265,7 @@ export const realizado = (m: Medida, valor: number) => !(m.aceitaZero && valor =
 export function exerciciosEfetivo(
   recentesPrimeiro: TreinoAvaliado[],
   idade: number,
-  tabelas: TabelaPontos[] = TABELAS_TAF3,
+  tabelas: TabelaPontos[],
 ): DesempenhoExercicio[] {
   const avs = recentesPrimeiro.flatMap((a) => (a.modo === 'efetivo' ? [a] : [])).reverse();
   return tabelas.map((tabela) =>

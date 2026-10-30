@@ -45,7 +45,8 @@ export default function NovoTreino() {
         <Aviso titulo="Informe sua data de nascimento" texto="No TAF-3 a pontuação depende da sua faixa etária." />
       );
     }
-    return <NovoTreinoEfetivo perfil={perfil} nascimento={perfil.dataNascimento} />;
+    // A key recria a tela quando o sexo muda: testes e unidades vêm da tabela de cada sexo.
+    return <NovoTreinoEfetivo key={perfil.sexo} perfil={perfil} nascimento={perfil.dataNascimento} />;
   }
 
   // A key recria a tela quando sexo/cargo mudam, para a lista de testes acompanhar.

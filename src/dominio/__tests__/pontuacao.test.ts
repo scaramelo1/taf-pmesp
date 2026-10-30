@@ -7,13 +7,18 @@ import { avaliarPontos, avaliarTreinoPontos, faixaDaIdade, valorParaPontos } fro
 import { rotuloFaixa, TABELAS_TAF3 } from '../regras/taf3.ts';
 import type { ExercicioId } from '../tipos.ts';
 
-const t = (id: ExercicioId) => TABELAS_TAF3.find((x) => x.exercicio === id)!;
+const TABELAS_M = TABELAS_TAF3.M;
+const TABELAS_F = TABELAS_TAF3.F;
+const t = (id: ExercicioId) => TABELAS_M.find((x) => x.exercicio === id)!;
+const f = (id: ExercicioId) => TABELAS_F.find((x) => x.exercicio === id)!;
 const pts = (id: ExercicioId, idade: number, valor: number) => avaliarPontos(t(id), idade, valor).pontos;
+const ptsF = (id: ExercicioId, idade: number, valor: number) => avaliarPontos(f(id), idade, valor).pontos;
 
 describe('estrutura da tabela', () => {
   it('6 testes, 17 linhas, colunas do tamanho das faixas', () => {
-    assert.equal(TABELAS_TAF3.length, 6);
-    for (const tab of TABELAS_TAF3) {
+    assert.equal(TABELAS_M.length, 6);
+    assert.equal(TABELAS_F.length, 6);
+    for (const tab of [...TABELAS_M, ...TABELAS_F]) {
       assert.equal(tab.niveis.length, 17, tab.exercicio);
       assert.equal(tab.pontos.length, 17, tab.exercicio);
       for (const linha of tab.pontos) assert.equal(linha.length, tab.faixas.length, tab.exercicio);
@@ -21,7 +26,7 @@ describe('estrutura da tabela', () => {
   });
 
   it('níveis nunca ficam mais fáceis de uma linha para a outra', () => {
-    for (const tab of TABELAS_TAF3) {
+    for (const tab of [...TABELAS_M, ...TABELAS_F]) {
       for (let i = 1; i < tab.niveis.length; i++) {
         const ok = tab.direcao === 'maior' ? tab.niveis[i] >= tab.niveis[i - 1] : tab.niveis[i] <= tab.niveis[i - 1];
         assert.ok(ok, `${tab.exercicio} linha ${i + 1}`);
@@ -30,7 +35,7 @@ describe('estrutura da tabela', () => {
   });
 
   it('cada faixa tem exatamente uma célula com 20 pontos (suficiência) e chega a 100', () => {
-    for (const tab of TABELAS_TAF3) {
+    for (const tab of [...TABELAS_M, ...TABELAS_F]) {
       tab.faixas.forEach((_, f) => {
         const coluna = tab.pontos.map((l) => l[f]);
         assert.equal(coluna.filter((p) => p === 20).length, 1, `${tab.exercicio} faixa ${f}`);
@@ -40,10 +45,12 @@ describe('estrutura da tabela', () => {
   });
 
   it('só a natação não tem suficiência', () => {
-    assert.deepEqual(
-      TABELAS_TAF3.filter((x) => !x.temSuficiencia).map((x) => x.exercicio),
-      ['natacao50'],
-    );
+    for (const tabelas of [TABELAS_M, TABELAS_F]) {
+      assert.deepEqual(
+        tabelas.filter((x) => !x.temSuficiencia).map((x) => x.exercicio),
+        ['natacao50'],
+      );
+    }
   });
 
   it('rótulos das faixas', () => {
@@ -116,6 +123,54 @@ describe('pontos conferidos na tabela', () => {
   });
 });
 
+describe('tabela feminina conferida', () => {
+  it('isometria na barra em segundos: quanto mais, melhor', () => {
+    const barra = f('barra');
+    assert.equal(barra.nome, 'Isometria na barra');
+    assert.equal(barra.unidade, 'segundos');
+    assert.equal(barra.direcao, 'maior');
+    assert.equal(ptsF('barra', 22, 2), 10); // linha 8: 2"
+    assert.equal(ptsF('barra', 22, 4), 20); // até 25: suficiência
+    assert.equal(ptsF('barra', 22, 35), 100);
+    assert.equal(ptsF('barra', 60, 2), 80); // 56+, linha 8
+    assert.equal(ptsF('barra', 28, 1), 0);
+  });
+
+  it('corridas', () => {
+    assert.equal(ptsF('corrida2400', 22, 930), 20); // 15'30"
+    assert.equal(ptsF('corrida2400', 22, 690), 100); // 11'30"
+    assert.equal(ptsF('corrida2400', 60, 1170), 10); // 19'30", 56+
+    assert.equal(ptsF('corrida2400', 28, 960), 20); // 16'00", 26–30
+    assert.equal(ptsF('corrida50', 22, 9.54), 20);
+    assert.equal(ptsF('corrida50', 22, 7.7), 100);
+    assert.equal(ptsF('corrida50', 60, 11.38), 10);
+  });
+
+  it('apoio e natação', () => {
+    assert.equal(ptsF('apoio', 22, 18), 20);
+    assert.equal(ptsF('apoio', 22, 34), 100);
+    assert.equal(ptsF('apoio', 60, 6), 30); // linhas 1 a 3 repetem 6
+    assert.equal(ptsF('natacao50', 22, 90), 10); // 1'30" cobre as linhas 1 a 8
+    assert.equal(ptsF('natacao50', 22, 40), 100);
+  });
+
+  it('abdominal tem 6 faixas, a primeira até 35', () => {
+    assert.equal(rotuloFaixa(f('abdominal'), 0), 'até 35');
+    assert.equal(rotuloFaixa(f('abdominal'), 1), '36 a 40');
+    assert.equal(rotuloFaixa(f('abdominal'), 5), '56 ou mais');
+    assert.equal(ptsF('abdominal', 35, 32), 20);
+    assert.equal(ptsF('abdominal', 35, 48), 100);
+    assert.equal(ptsF('abdominal', 38, 26), 20);
+    assert.equal(ptsF('abdominal', 38, 42), 100);
+    assert.equal(ptsF('abdominal', 60, 16), 10);
+    assert.equal(ptsF('abdominal', 60, 34), 100);
+  });
+
+  it('mesmo resultado pontua diferente em cada tabela', () => {
+    assert.notEqual(pts('corrida2400', 28, 960), ptsF('corrida2400', 28, 960));
+  });
+});
+
 describe('suficiência e próximo nível', () => {
   it('abaixo de 20 é insuficiente', () => {
     assert.equal(avaliarPontos(t('barra'), 22, 3).suficiente, false); // 10 pts
@@ -142,7 +197,7 @@ describe('avaliarTreinoPontos', () => {
   const r = (exercicio: ExercicioId, valor: number) => ({ exercicio, valor, tentativa: 1 as const });
 
   it('suficiente em tudo mas soma abaixo de 251 não é apto', () => {
-    const av = avaliarTreinoPontos(TABELAS_TAF3, 28, [
+    const av = avaliarTreinoPontos(TABELAS_M, 28, [
       r('barra', 3), // 20
       r('abdominal', 34), // 20
       r('apoio', 14), // 20
@@ -165,18 +220,18 @@ describe('avaliarTreinoPontos', () => {
       r('corrida50', 8.3), // 50
       r('corrida2400', 780), // 40
     ];
-    const no250 = avaliarTreinoPontos(TABELAS_TAF3, 28, [...base, r('natacao50', 90)]); // natação 0
+    const no250 = avaliarTreinoPontos(TABELAS_M, 28, [...base, r('natacao50', 90)]); // natação 0
     assert.equal(no250.soma, 260);
     assert.equal(no250.aptoGeral, true);
 
-    const abaixo = avaliarTreinoPontos(TABELAS_TAF3, 28, [...base.slice(0, 4), r('corrida2400', 840), r('natacao50', 90)]);
+    const abaixo = avaliarTreinoPontos(TABELAS_M, 28, [...base.slice(0, 4), r('corrida2400', 840), r('natacao50', 90)]);
     assert.equal(abaixo.soma, 240); // 2400 m com 20
     assert.equal(abaixo.faltaTotal, 11);
     assert.equal(abaixo.aptoGeral, false);
   });
 
   it('soma alta não compensa teste insuficiente', () => {
-    const av = avaliarTreinoPontos(TABELAS_TAF3, 28, [
+    const av = avaliarTreinoPontos(TABELAS_M, 28, [
       r('barra', 12),
       r('abdominal', 50),
       r('apoio', 32),
@@ -189,7 +244,7 @@ describe('avaliarTreinoPontos', () => {
   });
 
   it('parcial e insuficiente', () => {
-    const av = avaliarTreinoPontos(TABELAS_TAF3, 28, [r('barra', 2)]);
+    const av = avaliarTreinoPontos(TABELAS_M, 28, [r('barra', 2)]);
     assert.equal(av.completo, false);
     assert.equal(av.aptoGeral, false);
     assert.equal(av.pendentes.length, 4); // natação não fica pendente
@@ -204,16 +259,16 @@ describe('avaliarTreinoPontos', () => {
       r('corrida50', 8.3), // 50
       r('corrida2400', 780), // 40
     ];
-    const rapida = avaliarTreinoPontos(TABELAS_TAF3, 28, [...base, r('natacao50', 35)]); // valeria 100
+    const rapida = avaliarTreinoPontos(TABELAS_M, 28, [...base, r('natacao50', 35)]); // valeria 100
     assert.equal(rapida.soma, 260);
     assert.equal(rapida.aptoGeral, true);
 
-    const sem = avaliarTreinoPontos(TABELAS_TAF3, 28, base);
+    const sem = avaliarTreinoPontos(TABELAS_M, 28, base);
     assert.equal(sem.completo, true);
     assert.equal(sem.aptoGeral, true);
     assert.deepEqual(sem.pendentes, []);
 
-    const zero = avaliarTreinoPontos(TABELAS_TAF3, 28, [...base, r('natacao50', 0)]);
+    const zero = avaliarTreinoPontos(TABELAS_M, 28, [...base, r('natacao50', 0)]);
     assert.equal(zero.soma, 260);
     assert.equal(zero.exercicios.find((e) => e.tabela.exercicio === 'natacao50')!.avaliacao.pontos, 0);
   });

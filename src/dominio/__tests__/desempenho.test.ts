@@ -15,7 +15,7 @@ import {
   type TreinoBase,
 } from '../desempenho.ts';
 import { escalaGrafico } from '../escala.ts';
-import { EDITAL_CANDIDATO, EDITAL_TAF3 } from '../regras/index.ts';
+import { EDITAL_CANDIDATO, EDITAL_TAF3, ehEfetivo, TABELAS_TAF3 } from '../regras/index.ts';
 import { regrasCandidato } from '../regras/candidato.ts';
 import type { ExercicioId, ResultadoRegistrado } from '../tipos.ts';
 
@@ -43,7 +43,7 @@ describe('montarHistorico', () => {
     const h = montarHistorico(
       [
         treino('2026-10-20', { ...aptoCompleto, corrida2400: 740 }), // a barra já passa do teto de margem
-        treino('2026-10-15', { barra: 5, abdominal: 30, apoio: 20, corrida50: 8.6, corrida2400: 840, natacao50: 60 }, EDITAL_TAF3.id),
+        treino('2026-10-15', { barra: 5, abdominal: 30, apoio: 20, corrida50: 8.6, corrida2400: 840, natacao50: 60 }, EDITAL_TAF3.M.id),
         treino('2026-10-10', aptoCompleto),
         treino('2026-10-01', { barra: 2 }),
       ],
@@ -85,7 +85,7 @@ describe('montarHistorico', () => {
         ],
         null,
       ),
-      'candidato',
+      'candidato', 'M',
     );
     const setas = compararComAnteriores(avs[0], avs.slice(1));
     assert.equal(setas.get('corrida2400'), 'melhorou');
@@ -93,7 +93,7 @@ describe('montarHistorico', () => {
   });
 
   it('efetivo sem idade usa a data de nascimento; sem nenhuma, não avalia', () => {
-    const t = treino('2026-10-15', { barra: 5 }, EDITAL_TAF3.id, null);
+    const t = treino('2026-10-15', { barra: 5 }, EDITAL_TAF3.M.id, null);
     assert.equal(montarHistorico([t], null)[0].avaliado, null);
     const comNascimento = montarHistorico([t], '1998-01-01')[0].avaliado;
     assert.equal(comNascimento?.modo, 'efetivo');
@@ -102,7 +102,7 @@ describe('montarHistorico', () => {
 
   it('pontos iguais: manteve', () => {
     const h = montarHistorico(
-      [treino('2026-10-20', { barra: 5 }, EDITAL_TAF3.id), treino('2026-10-10', { barra: 5 }, EDITAL_TAF3.id)],
+      [treino('2026-10-20', { barra: 5 }, EDITAL_TAF3.M.id), treino('2026-10-10', { barra: 5 }, EDITAL_TAF3.M.id)],
       null,
     );
     assert.equal(h[0].tendencia, 'manteve');
@@ -111,7 +111,7 @@ describe('montarHistorico', () => {
 });
 
 describe('desempenhoGeral', () => {
-  const avaliados = (ts: TreinoBase[]) => avaliadosDoModo(montarHistorico(ts, null), 'candidato');
+  const avaliados = (ts: TreinoBase[]) => avaliadosDoModo(montarHistorico(ts, null), 'candidato', 'M');
 
   it('série, aptos X/Y, sequência e recorde só entre completos', () => {
     const g = desempenhoGeral(
@@ -160,7 +160,7 @@ describe('por exercício', () => {
         ],
         null,
       ),
-      'candidato',
+      'candidato', 'M',
     );
     const ex = exerciciosCandidato(avs, regras);
     const barra = ex.find((e) => e.medida.exercicio === 'barra')!;
@@ -186,18 +186,18 @@ describe('por exercício', () => {
   });
 
   it('ponto fraco = menor margem recente', () => {
-    const avs = avaliadosDoModo(montarHistorico([treino('2026-10-20', { barra: 6, abdominal: 37, corrida50: 8 })], null), 'candidato');
+    const avs = avaliadosDoModo(montarHistorico([treino('2026-10-20', { barra: 6, abdominal: 37, corrida50: 8 })], null), 'candidato', 'M');
     assert.equal(pontoFraco(exerciciosCandidato(avs, regras)), 'abdominal');
-    const so1 = avaliadosDoModo(montarHistorico([treino('2026-10-20', { barra: 6 })], null), 'candidato');
+    const so1 = avaliadosDoModo(montarHistorico([treino('2026-10-20', { barra: 6 })], null), 'candidato', 'M');
     assert.equal(pontoFraco(exerciciosCandidato(so1, regras)), null);
   });
 
   it('efetivo: linha de 20 pts pela idade, natação sem linha, ponto fraco por pontos', () => {
     const avs = avaliadosDoModo(
-      montarHistorico([treino('2026-10-20', { barra: 5, apoio: 14, natacao50: 80 }, EDITAL_TAF3.id)], null),
-      'efetivo',
+      montarHistorico([treino('2026-10-20', { barra: 5, apoio: 14, natacao50: 80 }, EDITAL_TAF3.M.id)], null),
+      'efetivo', 'M',
     );
-    const ex = exerciciosEfetivo(avs, 28);
+    const ex = exerciciosEfetivo(avs, 28, TABELAS_TAF3.M);
     const barra = ex.find((e) => e.medida.exercicio === 'barra')!;
     assert.equal(barra.referencia, 3); // 26–30 anos: 20 pts com 3 barras
     assert.equal(barra.serie[0].nota, 40);
@@ -208,12 +208,12 @@ describe('por exercício', () => {
   it('efetivo: natação nunca é ponto fraco e tempo 0 fica fora do gráfico e das setas', () => {
     const hist = montarHistorico(
       [
-        treino('2026-10-22', { ...completoTaf3, natacao50: 0 }, EDITAL_TAF3.id),
-        treino('2026-10-20', { ...completoTaf3, natacao50: 85 }, EDITAL_TAF3.id),
+        treino('2026-10-22', { ...completoTaf3, natacao50: 0 }, EDITAL_TAF3.M.id),
+        treino('2026-10-20', { ...completoTaf3, natacao50: 85 }, EDITAL_TAF3.M.id),
       ],
       null,
     );
-    const ex = exerciciosEfetivo(avaliadosDoModo(hist, 'efetivo'), 28);
+    const ex = exerciciosEfetivo(avaliadosDoModo(hist, 'efetivo', 'M'), 28, TABELAS_TAF3.M);
     const natacao = ex.find((e) => e.medida.exercicio === 'natacao50')!;
     assert.deepEqual(
       natacao.serie.map((m) => m.valor),
@@ -238,12 +238,46 @@ describe('compararExercicios', () => {
   it('▲▼ pelo valor bruto, só nos feitos nos dois', () => {
     const [a, b] = avaliadosDoModo(
       montarHistorico([treino('2026-10-20', { barra: 5, corrida50: 8.4 }), treino('2026-10-10', { barra: 4, corrida50: 8.2, abdominal: 40 })], null),
-      'candidato',
+      'candidato', 'M',
     );
     const c = compararExercicios(a, b);
     assert.equal(c.get('barra'), 'melhorou');
     assert.equal(c.get('corrida50'), 'piorou');
     assert.equal(c.has('abdominal'), false);
+  });
+});
+
+describe('separação por sexo no TAF-3', () => {
+  const feminino = (data: string, valores: Valores): TreinoBase => ({
+    ...treino(data, valores, EDITAL_TAF3.F.id),
+    sexo: 'F',
+  });
+  const completoF: Valores = { barra: 35, abdominal: 48, apoio: 34, corrida50: 7.7, corrida2400: 690 };
+
+  it('treino feminino é efetivo e pontua pela tabela feminina', () => {
+    assert.equal(ehEfetivo(EDITAL_TAF3.F.id), true);
+    const [h] = montarHistorico([feminino('2026-10-30', completoF)], null);
+    assert.equal(h.modo, 'efetivo');
+    assert.equal(h.avaliado?.nota, 500);
+    assert.equal(h.avaliado?.aptoGeral, true);
+  });
+
+  it('treinos de um sexo não comparam nem somam com os do outro', () => {
+    const h = montarHistorico(
+      [feminino('2026-10-30', completoF), treino('2026-10-20', completoTaf3, EDITAL_TAF3.M.id)],
+      null,
+    );
+    assert.equal(h[0].comparadoCom, null);
+    assert.equal(avaliadosDoModo(h, 'efetivo', 'F').length, 1);
+    assert.equal(avaliadosDoModo(h, 'efetivo', 'M').length, 1);
+    assert.equal(avaliadosDoModo(h, 'efetivo', 'F')[0].treino.sexo, 'F');
+  });
+
+  it('linha de 20 pts usa a tabela do sexo', () => {
+    const h = montarHistorico([feminino('2026-10-30', completoF)], null);
+    const ex = exerciciosEfetivo(avaliadosDoModo(h, 'efetivo', 'F'), 28, TABELAS_TAF3.F);
+    assert.equal(ex.find((e) => e.medida.exercicio === 'barra')?.medida.nome, 'Isometria na barra');
+    assert.equal(ex.find((e) => e.medida.exercicio === 'corrida2400')?.referencia, 960);
   });
 });
 

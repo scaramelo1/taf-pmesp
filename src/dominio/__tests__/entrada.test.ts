@@ -48,7 +48,7 @@ describe('lerEntrada', () => {
     assert.equal(lerEntrada(regra('corrida2400'), minseg('12', '30')), 750);
     assert.equal(lerEntrada(regra('corrida2400'), minseg('13', '0')), 780);
     assert.equal(lerEntrada(regra('natacao50'), minseg('', '58')), 58);
-    const natacaoTaf3 = TABELAS_TAF3.find((t) => t.exercicio === 'natacao50')!;
+    const natacaoTaf3 = TABELAS_TAF3.M.find((t) => t.exercicio === 'natacao50')!;
     assert.equal(lerEntrada(natacaoTaf3, minseg('0', '0')), 0);
     assert.equal(lerEntrada(natacaoTaf3, minseg('', '0')), 0);
     assert.equal(lerEntrada(regra('corrida2400'), minseg('12', '60')), null);

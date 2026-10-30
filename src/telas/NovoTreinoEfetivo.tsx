@@ -27,18 +27,19 @@ import { estilos } from './NovoTreinoCandidato';
 
 export function NovoTreinoEfetivo({ perfil, nascimento }: { perfil: Perfil; nascimento: string }) {
   const db = useSQLiteContext();
+  const tabelas = TABELAS_TAF3[perfil.sexo];
   const [data, setData] = useState(() => formatarData(hojeISO()));
   const [observacao, setObservacao] = useState('');
   const [entradas, setEntradas] = useState<Partial<Record<ExercicioId, Entrada>>>({});
   const [salvando, setSalvando] = useState(false);
-  const [testes, setTestes] = useState<ExercicioId[]>(() => TABELAS_TAF3.map((t) => t.exercicio));
-  const avulso = TABELAS_TAF3.some((t) => !testes.includes(t.exercicio));
+  const [testes, setTestes] = useState<ExercicioId[]>(() => tabelas.map((t) => t.exercicio));
+  const avulso = tabelas.some((t) => !testes.includes(t.exercicio));
 
   const erroData = erroDataTreino(data, hojeISO(), nascimento);
   const dataISO = erroData ? null : lerData(data);
   const idade = idadeEm(nascimento, dataISO ?? hojeISO());
 
-  const leituras = TABELAS_TAF3.filter((t) => testes.includes(t.exercicio)).map((tabela) => {
+  const leituras = tabelas.filter((t) => testes.includes(t.exercicio)).map((tabela) => {
     const entrada = entradas[tabela.exercicio] ?? ENTRADA_VAZIA;
     const valor = lerEntrada(tabela, entrada);
     const av = typeof valor === 'number' ? avaliarPontos(tabela, idade, valor) : null;
@@ -49,7 +50,7 @@ export function NovoTreinoEfetivo({ perfil, nascimento }: { perfil: Perfil; nasc
     typeof valor === 'number' ? [{ exercicio: tabela.exercicio, valor, tentativa: 1 as const }] : [],
   );
   const temInvalido = leituras.some((l) => l.valor === null);
-  const avaliacao = avaliarTreinoPontos(TABELAS_TAF3, idade, resultados);
+  const avaliacao = avaliarTreinoPontos(tabelas, idade, resultados);
   const contam = avaliacao.exercicios.filter((e) => e.tabela.contaNaSoma);
   const suficientes = contam.filter((e) => e.avaliacao.suficiente).length;
 
@@ -59,15 +60,15 @@ export function NovoTreinoEfetivo({ perfil, nascimento }: { perfil: Perfil; nasc
     try {
       await criarTreino(db, {
         data: dataISO,
-        edital: EDITAL_TAF3.id,
-        sexo: 'M',
+        edital: EDITAL_TAF3[perfil.sexo].id,
+        sexo: perfil.sexo,
         cargo: perfil.cargo,
         idade,
         observacao: observacao.trim(),
         resultados,
       });
       setEntradas({});
-      setTestes(TABELAS_TAF3.map((t) => t.exercicio));
+      setTestes(tabelas.map((t) => t.exercicio));
       setObservacao('');
       setData(formatarData(hojeISO()));
       Alert.alert('Treino salvo', `Total: ${avaliacao.soma} pontos`);
@@ -87,7 +88,7 @@ export function NovoTreinoEfetivo({ perfil, nascimento }: { perfil: Perfil; nasc
       automaticallyAdjustKeyboardInsets
     >
       <CartaoData data={data} onChange={setData} erro={erroData} />
-      <SeletorTestes medidas={TABELAS_TAF3} selecionados={testes} onChange={setTestes} />
+      <SeletorTestes medidas={tabelas} selecionados={testes} onChange={setTestes} />
 
       {leituras.map(({ tabela, entrada, valor, av }) => {
         const suficiencia = tabela.temSuficiencia ? valorParaPontos(tabela, idade, PONTOS_SUFICIENCIA) : null;
@@ -150,7 +151,7 @@ export function NovoTreinoEfetivo({ perfil, nascimento }: { perfil: Perfil; nasc
         )}
         {!avulso && avaliacao.pendentes.length > 0 && contam.length > 0 && (
           <TextoSuave>
-            {avaliacao.pendentes.length} de {testesQueContam(TABELAS_TAF3)} teste(s) não registrado(s)
+            {avaliacao.pendentes.length} de {testesQueContam(tabelas)} teste(s) não registrado(s)
           </TextoSuave>
         )}
         <TextoSuave>Idade considerada: {idade} anos</TextoSuave>

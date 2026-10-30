@@ -14,6 +14,7 @@ import {
   type DesempenhoExercicio,
 } from '../dominio/desempenho';
 import { formatarEixo, formatarNota, formatarPercentual, formatarValor } from '../dominio/formato';
+import { TABELAS_TAF3 } from '../dominio/regras';
 import { regrasCandidato } from '../dominio/regras/candidato';
 import { PONTOS_MINIMOS_TOTAL } from '../dominio/regras/taf3';
 import type { Modo } from '../dominio/tipos';
@@ -99,7 +100,8 @@ export default function Desempenho() {
 
   const { perfil, historico } = dados;
   const modo: Modo = perfil?.modo ?? 'candidato';
-  const avaliados = avaliadosDoModo(historico, modo);
+  const sexo = perfil?.sexo ?? 'M';
+  const avaliados = avaliadosDoModo(historico, modo, sexo);
 
   if (avaliados.length === 0) {
     return (
@@ -107,7 +109,8 @@ export default function Desempenho() {
         <Cartao>
           <Titulo>Sem dados ainda</Titulo>
           <TextoSuave>
-            Registre treinos como {modo === 'efetivo' ? 'Policial (TAF-3)' : 'Candidato'} para ver sua evolução aqui.
+            Registre treinos como {modo === 'efetivo' ? 'Policial (TAF-3)' : 'Candidato'} (
+            {sexo === 'M' ? 'masculino' : 'feminino'}) para ver sua evolução aqui.
           </TextoSuave>
           <Link href="/novo-treino" style={estilos.link}>
             Registrar um treino →
@@ -121,8 +124,8 @@ export default function Desempenho() {
   const idade = perfil?.dataNascimento ? idadeEm(perfil.dataNascimento, hojeISO()) : avaliados[0].treino.idade;
   const exercicios =
     modo === 'candidato'
-      ? exerciciosCandidato(avaliados, regrasCandidato(perfil?.sexo ?? 'M', perfil?.cargo ?? 'soldado'))
-      : exerciciosEfetivo(avaliados, idade ?? 0);
+      ? exerciciosCandidato(avaliados, regrasCandidato(sexo, perfil?.cargo ?? 'soldado'))
+      : exerciciosEfetivo(avaliados, idade ?? 0, TABELAS_TAF3[sexo]);
   const fraco = pontoFraco(exercicios);
   const nomeFraco = exercicios.find((e) => e.medida.exercicio === fraco)?.medida.nome;
   const prova = modo === 'efetivo' ? 'o TAF' : 'a prova';

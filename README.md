@@ -6,8 +6,8 @@ Dois modos, escolhidos no perfil:
 
 - **Candidato**: apto/inapto pelos índices mínimos do concurso, com reteste
   (exceto 2400 m) e margem sobre o mínimo.
-- **Policial (TAF-3)**: pontos pela tabela do efetivo masculino, conforme a
-  faixa etária na data do treino; aprovação com soma ≥ 251 pts e ao menos
+- **Policial (TAF-3)**: pontos pela tabela do efetivo masculino ou feminino
+  (escolhido no perfil), conforme a faixa etária na data do treino; aprovação com soma ≥ 251 pts e ao menos
   20 pts em cada teste (natação não tem mínimo).
 
 **Treino avulso**: em Novo treino dá para escolher só alguns testes (ex.: só a

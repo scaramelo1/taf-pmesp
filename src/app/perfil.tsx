@@ -46,7 +46,7 @@ export default function PerfilTela() {
     try {
       await salvarPerfil(db, {
         nome: nome.trim(),
-        sexo: efetivo ? 'M' : sexo,
+        sexo,
         cargo,
         modo,
         dataNascimento: lerData(nascimento),
@@ -83,20 +83,20 @@ export default function PerfilTela() {
       <Cartao>
         <Campo rotulo="Nome" value={nome} onChangeText={setNome} placeholder="Seu nome" autoCapitalize="words" />
 
+        <Rotulo>Sexo</Rotulo>
+        <Segmentado
+          valor={sexo}
+          onChange={setSexo}
+          opcoes={[
+            { valor: 'M', rotulo: 'Masculino' },
+            { valor: 'F', rotulo: 'Feminino' },
+          ]}
+        />
+
         {efetivo ? (
-          <TextoSuave>A tabela do TAF-3 disponível no app é a do efetivo masculino.</TextoSuave>
+          <TextoSuave>Define a tabela do TAF-3 usada nos novos treinos.</TextoSuave>
         ) : (
           <>
-            <Rotulo>Sexo</Rotulo>
-            <Segmentado
-              valor={sexo}
-              onChange={setSexo}
-              opcoes={[
-                { valor: 'M', rotulo: 'Masculino' },
-                { valor: 'F', rotulo: 'Feminino' },
-              ]}
-            />
-
             <Rotulo>Cargo pretendido</Rotulo>
             <Segmentado
               valor={cargo}

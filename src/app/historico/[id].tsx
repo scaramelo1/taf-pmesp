@@ -89,14 +89,17 @@ export default function DetalheTreino() {
 
   const item = historico[i];
   const { treino, avaliado, modo } = item;
-  const anteriores = historico.slice(i + 1).flatMap((h) => (h.modo === modo && h.avaliado ? [h.avaliado] : []));
+  const anteriores = historico
+    .slice(i + 1)
+    .flatMap((h) => (h.modo === modo && h.treino.sexo === treino.sexo && h.avaliado ? [h.avaliado] : []));
   const setas = avaliado ? compararComAnteriores(avaliado, anteriores) : new Map<ExercicioId, Tendencia>();
   const { comparadoCom } = item;
 
+  const sexoTreino = treino.sexo === 'M' ? 'masculino' : 'feminino';
   const perfilTreino =
     modo === 'candidato'
-      ? `Candidato · ${treino.cargo === 'oficial' ? 'Aluno Oficial' : 'Soldado'} · ${treino.sexo === 'M' ? 'masculino' : 'feminino'}`
-      : `Policial (TAF-3)${treino.idade !== null ? ` · ${treino.idade} anos` : ''}`;
+      ? `Candidato · ${treino.cargo === 'oficial' ? 'Aluno Oficial' : 'Soldado'} · ${sexoTreino}`
+      : `Policial (TAF-3) · ${sexoTreino}${treino.idade !== null ? ` · ${treino.idade} anos` : ''}`;
 
   return (
     <ScrollView style={ui.tela} contentContainerStyle={ui.conteudo}>
