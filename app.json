@@ -21,7 +21,8 @@
           "resizeMode": "contain",
           "backgroundColor": "#0E1A2B"
         }
-      ]
+      ],
+      "expo-font"
     ],
     "experiments": {
       "typedRoutes": true
@@ -39,6 +40,16 @@
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false
+    },
+    "extra": {
+      "router": {
+        "asyncRoutes": {
+          "web": true
+        }
+      },
+      "eas": {
+        "projectId": "f5c11c69-cfb3-4f34-ae6b-f4984442a923"
+      }
     }
   }
 }
