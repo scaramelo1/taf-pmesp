@@ -1,0 +1,8 @@
+# Página de download do ReadyTAF, fora das lojas.
+AddType application/vnd.android.package-archive .apk
+<FilesMatch "\.apk$">
+    Header set Content-Disposition "attachment; filename=\"readytaf.apk\""
+    # Sem cache, para quem baixar depois receber sempre a versão nova.
+    Header set Cache-Control "no-cache"
+</FilesMatch>
+Header set X-Robots-Tag "noindex, nofollow"
