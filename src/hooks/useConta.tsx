@@ -23,10 +23,12 @@ const CHAVE_TOKEN = 'token';
 const CHAVE_NOME = 'nome';
 /** Conta dona dos dados deste aparelho; continua gravada mesmo se a sessão expirar. */
 const CHAVE_CONTA = 'conta';
-/** Cada pedido espera até 25 s no servidor: dá uns 5 minutos para escolher a conta. */
-const TENTATIVAS_DE_LOGIN = 12;
+/** Tempo para escolher a conta no Google; cada pedido espera até 25 s no servidor. */
+const TEMPO_DE_LOGIN_MS = 5 * 60_000;
+/** Pausa antes de tentar de novo quando a internet falha. */
+const PAUSA_SEM_REDE_MS = 2_000;
 /** Depois de fechar o navegador, o tempo para a sessão ainda chegar. */
-const FOLGA_AO_FECHAR_MS = 5_000;
+const FOLGA_AO_FECHAR_MS = 10_000;
 /** Junta várias mudanças seguidas num envio só. */
 const ESPERA_ENVIO_MS = 1_500;
 
@@ -160,10 +162,17 @@ export function ProvedorConta({ children }: { children: ReactNode }) {
     let ativo = true;
 
     // A sessão vem direto do servidor, então o login funciona mesmo se o navegador não voltar ao app.
+    // Com o navegador na frente, o Android pode cortar a rede do app: falha de conexão só faz tentar de novo.
     const esperarSessao = async () => {
-      for (let i = 0; i < TENTATIVAS_DE_LOGIN && ativo; i++) {
-        const resposta = await aguardarLoginGoogle(verificador);
-        if ('token' in resposta) return resposta;
+      const fim = Date.now() + TEMPO_DE_LOGIN_MS;
+      while (ativo && Date.now() < fim) {
+        try {
+          const resposta = await aguardarLoginGoogle(verificador);
+          if ('token' in resposta) return resposta;
+        } catch (erro) {
+          if (!(erro instanceof ErroApi && erro.status === 0)) throw erro;
+          await new Promise((pronto) => setTimeout(pronto, PAUSA_SEM_REDE_MS));
+        }
       }
       return null;
     };
