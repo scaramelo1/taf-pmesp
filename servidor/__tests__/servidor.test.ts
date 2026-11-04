@@ -93,6 +93,33 @@ describe('servidor do ReadyTAF', () => {
     assert.deepEqual(await aguardarLoginGoogle('w'.repeat(64), base), { pendente: true });
   });
 
+  it('sessão chega mesmo se a primeira resposta se perder, e recarregar a página não dá erro', async () => {
+    const verificador = 'p'.repeat(64);
+    const inicio = await fetch(urlDoLogin('exp://127.0.0.1:8081/--/login', desafioDe(verificador), base), { redirect: 'manual' });
+    const estado = new URL(inicio.headers.get('location') as string).searchParams.get('state');
+
+    // O app pergunta e o Android corta a rede: o pedido é abandonado no meio da espera.
+    const abandonado = new AbortController();
+    const perdido = fetch(`${base}/auth/google/aguardar`, {
+      method: 'POST', body: JSON.stringify({ verificador }), signal: abandonado.signal,
+    }).catch(() => null);
+    abandonado.abort();
+
+    const carga = { iss: 'accounts.google.com', aud: 'cliente-teste', exp: Date.now() / 1000 + 600, sub: 'g-9', given_name: 'Caio' };
+    idTokenFalso = `x.${Buffer.from(JSON.stringify(carga)).toString('base64url')}.y`;
+    assert.equal((await fetch(`${base}/auth/google/retorno?code=abc&state=${estado}`)).status, 200);
+    await perdido;
+    await new Promise((pronto) => { setTimeout(pronto, 400); });
+
+    const sessao = await aguardarLoginGoogle(verificador, base);
+    assert.ok('token' in sessao && sessao.nome === 'Caio');
+
+    const recarregada = await fetch(`${base}/auth/google/retorno?code=abc&state=${estado}`);
+    assert.equal(recarregada.status, 200);
+    assert.match(await recarregada.text(), /Pode fechar esta página/);
+    assert.equal((await fetch(`${base}/auth/google/retorno?code=abc&state=desconhecido`)).status, 400);
+  });
+
   it('recusa endereço de retorno de outro app', async () => {
     const r = await fetch(urlDoLogin('https://malicioso.test', desafioDe('v'.repeat(64)), base), { redirect: 'manual' });
     assert.equal(r.status, 400);

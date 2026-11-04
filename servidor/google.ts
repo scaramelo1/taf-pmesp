@@ -45,7 +45,7 @@ const escaparHtml = (texto: string) =>
  * A página tenta voltar sozinha e oferece o botão, porque o navegador pode bloquear o salto automático.
  * Mesmo sem voltar, o login já vale: o app recebe a sessão por /auth/google/aguardar.
  */
-export function paginaDeRetorno(destino: string) {
+export function paginaDeRetorno(destino: string, aviso?: string) {
   const falhou = /[?&]erro=1/.test(destino);
   const href = escaparHtml(destino);
   const script = JSON.stringify(destino).replace(/</g, '\\u003c');
@@ -61,9 +61,12 @@ a{background:#fff;color:#1f1f1f;font-weight:700;text-decoration:none;padding:14p
 </style>
 </head>
 <body>
-<p>${falhou ? 'Não foi possível entrar. Volte ao app e tente de novo.' : 'Login concluído. Se o app não abrir sozinho, toque no botão ou feche esta página.'}</p>
+${aviso
+    // Página recarregada ou login vencido: só o aviso, sem tentar abrir o app de novo.
+    ? `<p>${escaparHtml(aviso)}</p>`
+    : `<p>${falhou ? 'Não foi possível entrar. Volte ao app e tente de novo.' : 'Login concluído. Se o app não abrir sozinho, toque no botão ou feche esta página.'}</p>
 <a href="${href}">Voltar ao ReadyTAF</a>
-<script>location.href=${script};</script>
+<script>location.href=${script};</script>`}
 </body>
 </html>`;
 }
@@ -83,6 +86,8 @@ export class LoginGoogle {
   private codigos = new Map<string, CodigoPendente>();
   /** Liga o desafio ao código, para o app receber a sessão sem depender da volta pelo navegador. */
   private porDesafio = new Map<string, string>();
+  /** Estados já usados, para a página recarregada não mostrar erro. */
+  private concluidos = new Set<string>();
   private config: ConfigGoogle;
   private relogio: () => number;
 
@@ -153,6 +158,8 @@ export class LoginGoogle {
     const login = estado ? this.logins.get(estado) : undefined;
     if (!estado || !login || login.expira <= this.relogio()) return null;
     this.logins.delete(estado);
+    if (this.concluidos.size >= MAXIMO_PENDENTES) this.concluidos.clear();
+    this.concluidos.add(estado);
 
     try {
       const usuario = codigoGoogle ? this.lerUsuario(await this.pedirIdToken(codigoGoogle)) : null;
@@ -173,15 +180,22 @@ export class LoginGoogle {
    * Espera o login terminar e devolve o usuário, ou null se o tempo acabar: o app pergunta de novo.
    * Só quem tem o verificador, que nunca sai do aparelho, chega ao desafio certo.
    */
+  /** True quando o login com esse estado já terminou: o navegador só recarregou a página de retorno. */
+  jaConcluido(estado: string | null) {
+    return estado !== null && this.concluidos.has(estado);
+  }
+
   async aguardar(verificador: string) {
     const desafio = createHash('sha256').update(verificador).digest('base64url');
     const fim = Date.now() + (this.config.esperaMs ?? ESPERA_MS);
     for (;;) {
       const codigo = this.porDesafio.get(desafio);
-      if (codigo) {
-        this.porDesafio.delete(desafio);
-        return this.trocar(codigo, verificador);
-      }
+      const pendente = codigo ? this.codigos.get(codigo) : undefined;
+      // Não queima o código: com o navegador na frente, o Android corta a rede do app e a resposta
+      // pode ir para uma conexão já morta. Até o código expirar, o app pode pedir de novo.
+      // O desafio só é alcançado com o verificador, que nunca sai do aparelho.
+      if (pendente && pendente.expira > this.relogio()) return { sub: pendente.sub, nome: pendente.nome };
+      if (codigo) this.porDesafio.delete(desafio);
       if (Date.now() >= fim) return null;
       await new Promise((pronto) => { setTimeout(pronto, INTERVALO_ESPERA_MS); });
     }

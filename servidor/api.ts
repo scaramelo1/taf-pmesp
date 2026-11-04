@@ -132,7 +132,16 @@ export function criarApi(banco: BancoSqlite, opcoes: OpcoesApi = {}): Server {
     if (rota === 'GET /auth/google/retorno') {
       if (!login) throw new ErroHttp(503, 'Login com Google indisponível');
       const destino = await login.concluir(params.get('code'), params.get('state'));
-      if (!destino) throw new ErroHttp(400, 'Login expirado; tente de novo');
+      if (!destino && login.jaConcluido(params.get('state'))) {
+        res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' });
+        res.end(paginaDeRetorno('', 'Login concluído. Pode fechar esta página e voltar ao ReadyTAF.'));
+        return undefined;
+      }
+      if (!destino) {
+        res.writeHead(400, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' });
+        res.end(paginaDeRetorno('', 'O login demorou demais. Volte ao ReadyTAF e toque em Entrar com Google de novo.'));
+        return undefined;
+      }
       res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' });
       res.end(paginaDeRetorno(destino));
       return undefined;
