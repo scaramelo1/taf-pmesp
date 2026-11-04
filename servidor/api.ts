@@ -1,4 +1,5 @@
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
+import { readFileSync } from 'node:fs';
 import { createServer } from 'node:http';
 import type { IncomingMessage, Server, ServerResponse } from 'node:http';
 import { gzipSync } from 'node:zlib';
@@ -6,6 +7,7 @@ import { gzipSync } from 'node:zlib';
 import { validarCopia } from '../src/dominio/sincronia.ts';
 import type { BancoSqlite, Conta } from './banco.ts';
 import { LoginGoogle, paginaDeRetorno } from './google.ts';
+import { paginaApagarConta, paginaInicial, paginaPrivacidade } from './paginas.ts';
 import type { ConfigGoogle, UsuarioGoogle } from './google.ts';
 
 /** Uns 10 mil treinos cabem com folga. */
@@ -19,6 +21,15 @@ class ErroHttp extends Error {
     this.status = status;
   }
 }
+
+const ICONE = readFileSync(new URL('../assets/icon.png', import.meta.url));
+
+/** Páginas públicas exigidas pelo Google e pelo Google Play. */
+const PAGINAS: Record<string, () => string> = {
+  '/': paginaInicial,
+  '/privacidade': paginaPrivacidade,
+  '/apagar-conta': paginaApagarConta,
+};
 
 const hashDoToken = (token: string) => createHash('sha256').update(token).digest('hex');
 
@@ -95,6 +106,19 @@ export function criarApi(banco: BancoSqlite, opcoes: OpcoesApi = {}): Server {
     const ok = (corpo: unknown, status = 200) => responder(req, res, status, corpo);
 
     if (rota === 'GET /saude') return ok({ ok: true });
+
+    const html = req.method === 'GET' ? PAGINAS[pathname] : undefined;
+    if (html) {
+      res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'public, max-age=3600' });
+      res.end(html());
+      return undefined;
+    }
+
+    if (rota === 'GET /icone.png') {
+      res.writeHead(200, { 'Content-Type': 'image/png', 'Cache-Control': 'public, max-age=86400' });
+      res.end(ICONE);
+      return undefined;
+    }
 
     if (rota === 'GET /auth/google/inicio') {
       if (!login) throw new ErroHttp(503, 'Login com Google indisponível');

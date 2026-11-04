@@ -156,6 +156,15 @@ describe('servidor do ReadyTAF', () => {
     assert.deepEqual(nova, { versao: 0, dados: null });
   });
 
+  it('páginas públicas: início, privacidade e apagar conta', async () => {
+    for (const [caminho, texto] of [['/', 'ReadyTAF'], ['/privacidade', 'Política de Privacidade'], ['/apagar-conta', 'Apagar conta e backup']]) {
+      const r = await fetch(base + caminho);
+      assert.equal(r.status, 200);
+      assert.match(await r.text(), new RegExp(texto));
+    }
+    assert.equal((await fetch(`${base}/icone.png`)).headers.get('content-type'), 'image/png');
+  });
+
   it('página de retorno escapa o endereço', () => {
     assert.doesNotMatch(paginaDeRetorno('tafpmesp://login?codigo="><script>'), /"><script>/);
   });
