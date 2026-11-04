@@ -22,11 +22,13 @@ import {
 import { EDITAL_TAF3, TABELAS_TAF3 } from '../dominio/regras';
 import { PONTOS_MINIMOS_TOTAL, PONTOS_SUFICIENCIA, rotuloFaixa } from '../dominio/regras/taf3';
 import type { ExercicioId, ResultadoRegistrado } from '../dominio/tipos';
+import { useConta } from '../hooks/useConta';
 import { cores } from '../tema';
 import { estilos } from './NovoTreinoCandidato';
 
 export function NovoTreinoEfetivo({ perfil, nascimento }: { perfil: Perfil; nascimento: string }) {
   const db = useSQLiteContext();
+  const { avisarMudanca } = useConta();
   const tabelas = TABELAS_TAF3[perfil.sexo];
   const [data, setData] = useState(() => formatarData(hojeISO()));
   const [observacao, setObservacao] = useState('');
@@ -72,6 +74,7 @@ export function NovoTreinoEfetivo({ perfil, nascimento }: { perfil: Perfil; nasc
       setObservacao('');
       setData(formatarData(hojeISO()));
       Alert.alert('Treino salvo', `Total: ${avaliacao.soma} pontos`);
+      avisarMudanca();
       router.navigate('/');
     } catch (e) {
       Alert.alert('Erro ao salvar', String(e));

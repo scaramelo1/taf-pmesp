@@ -1,9 +1,10 @@
 import { useFocusEffect } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { listarTreinos, obterPerfil, type Perfil, type Treino } from '../db/repositorio';
 import { montarHistorico, type ItemHistorico } from '../dominio/desempenho';
+import { useConta } from './useConta';
 
 export interface DadosHistorico {
   perfil: Perfil | null;
@@ -26,6 +27,15 @@ export function useHistorico(): [DadosHistorico | undefined, () => Promise<void>
       recarregar();
     }, [recarregar]),
   );
+
+  // Treinos que chegaram pelo backup de outro aparelho com a tela já aberta.
+  const { versaoDados } = useConta();
+  const versaoVista = useRef(versaoDados);
+  useEffect(() => {
+    if (versaoVista.current === versaoDados) return;
+    versaoVista.current = versaoDados;
+    recarregar();
+  }, [recarregar, versaoDados]);
 
   return [dados, recarregar];
 }

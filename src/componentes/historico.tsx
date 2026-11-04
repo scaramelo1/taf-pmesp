@@ -46,7 +46,12 @@ export function SeloTreino({ avaliado }: { avaliado: TreinoAvaliado | null }) {
 }
 
 /** Pede confirmação e exclui; `depois` roda só se o treino foi excluído. */
-export function confirmarExclusao(db: SQLiteDatabase, treino: { id: number; data: string }, depois: () => void) {
+export function confirmarExclusao(
+  db: SQLiteDatabase,
+  treino: { id: number; data: string },
+  depois: () => void,
+  avisarMudanca: () => void,
+) {
   Alert.alert('Excluir treino', `Excluir o treino de ${formatarData(treino.data)}? Não dá para desfazer.`, [
     { text: 'Cancelar', style: 'cancel' },
     {
@@ -55,6 +60,7 @@ export function confirmarExclusao(db: SQLiteDatabase, treino: { id: number; data
       onPress: async () => {
         try {
           await excluirTreino(db, treino.id);
+          avisarMudanca();
           depois();
         } catch (e) {
           Alert.alert('Erro ao excluir', String(e));

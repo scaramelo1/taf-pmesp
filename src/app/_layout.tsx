@@ -1,39 +1,39 @@
-import Ionicons from '@expo/vector-icons/Ionicons';
-import { Tabs } from 'expo-router';
+import { SplashScreen, Stack } from 'expo-router';
 import { SQLiteProvider } from 'expo-sqlite';
 import { StatusBar } from 'expo-status-bar';
-import type { ComponentProps } from 'react';
 
 import { migrar } from '../db/migracoes';
-import { cores } from '../tema';
+import { ProvedorConta, useConta } from '../hooks/useConta';
 
-type NomeIcone = ComponentProps<typeof Ionicons>['name'];
+// A abertura fica na tela até saber se já existe uma conta neste aparelho.
+SplashScreen.preventAutoHideAsync();
 
-// A tab bar sempre passa a cor como string; o tipo ColorValue do RN inclui null.
-const icone =
-  (nome: NomeIcone) =>
-  ({ color, size }: { color: unknown; size: number }) => <Ionicons name={nome} color={color as string} size={size} />;
+/** O login com Google é obrigatório: sem conta, só a tela de login existe. */
+function Navegacao() {
+  const { carregando, nome } = useConta();
+  if (carregando) return null;
+  SplashScreen.hide();
+  const logado = nome !== null;
+
+  return (
+    <Stack screenOptions={{ headerShown: false }}>
+      <Stack.Protected guard={logado}>
+        <Stack.Screen name="(abas)" />
+      </Stack.Protected>
+      <Stack.Protected guard={!logado}>
+        <Stack.Screen name="login" />
+      </Stack.Protected>
+    </Stack>
+  );
+}
 
 export default function RootLayout() {
   return (
     <SQLiteProvider databaseName="taf.db" onInit={migrar}>
       <StatusBar style="light" />
-      <Tabs
-        screenOptions={{
-          headerStyle: { backgroundColor: cores.primaria },
-          headerTintColor: '#fff',
-          tabBarActiveTintColor: cores.destaque,
-        }}
-      >
-        <Tabs.Screen name="index" options={{ title: 'Início', headerTitle: 'ReadyTAF', tabBarIcon: icone('home') }} />
-        <Tabs.Screen name="novo-treino" options={{ title: 'Novo treino', tabBarIcon: icone('add-circle') }} />
-        <Tabs.Screen
-          name="historico"
-          options={{ title: 'Histórico', headerShown: false, tabBarIcon: icone('list') }}
-        />
-        <Tabs.Screen name="desempenho" options={{ title: 'Desempenho', tabBarIcon: icone('stats-chart') }} />
-        <Tabs.Screen name="perfil" options={{ title: 'Perfil', tabBarIcon: icone('person') }} />
-      </Tabs>
+      <ProvedorConta>
+        <Navegacao />
+      </ProvedorConta>
     </SQLiteProvider>
   );
 }

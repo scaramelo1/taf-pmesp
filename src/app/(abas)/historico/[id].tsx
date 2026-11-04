@@ -3,17 +3,18 @@ import { useSQLiteContext } from 'expo-sqlite';
 import type { ReactNode } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 
-import { confirmarExclusao, resumoTreino, SeloTreino } from '../../componentes/historico';
-import { Botao, Cartao, Selo, SeloPontos, SetaTendencia, estilos as ui, TextoSuave, Titulo } from '../../componentes/ui';
-import type { Tendencia } from '../../dominio/avaliacao';
-import { formatarData } from '../../dominio/datas';
-import { compararComAnteriores, type TreinoAvaliado } from '../../dominio/desempenho';
-import { descreverDiferenca, formatarValor, formatarVariacao } from '../../dominio/formato';
-import { descreverPontos } from '../../dominio/pontuacao';
-import { PONTOS_MINIMOS_TOTAL } from '../../dominio/regras/taf3';
-import type { ExercicioId } from '../../dominio/tipos';
-import { useHistorico } from '../../hooks/useHistorico';
-import { cores, espaco } from '../../tema';
+import { confirmarExclusao, resumoTreino, SeloTreino } from '../../../componentes/historico';
+import { Botao, Cartao, Selo, SeloPontos, SetaTendencia, estilos as ui, TextoSuave, Titulo } from '../../../componentes/ui';
+import type { Tendencia } from '../../../dominio/avaliacao';
+import { formatarData } from '../../../dominio/datas';
+import { compararComAnteriores, type TreinoAvaliado } from '../../../dominio/desempenho';
+import { descreverDiferenca, formatarValor, formatarVariacao } from '../../../dominio/formato';
+import { descreverPontos } from '../../../dominio/pontuacao';
+import { PONTOS_MINIMOS_TOTAL } from '../../../dominio/regras/taf3';
+import type { ExercicioId } from '../../../dominio/tipos';
+import { useConta } from '../../../hooks/useConta';
+import { useHistorico } from '../../../hooks/useHistorico';
+import { cores, espaco } from '../../../tema';
 
 interface PropsLinha {
   nome: string;
@@ -70,6 +71,7 @@ function Exercicios({ avaliado, setas }: { avaliado: TreinoAvaliado; setas: Map<
 export default function DetalheTreino() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const db = useSQLiteContext();
+  const { avisarMudanca } = useConta();
   const [dados] = useHistorico();
 
   if (!dados) return <View style={ui.tela} />;
@@ -149,7 +151,7 @@ export default function DetalheTreino() {
         </Cartao>
       )}
 
-      <Botao titulo="Excluir treino" variante="perigo" onPress={() => confirmarExclusao(db, treino, () => router.back())} />
+      <Botao titulo="Excluir treino" variante="perigo" onPress={() => confirmarExclusao(db, treino, () => router.back(), avisarMudanca)} />
     </ScrollView>
   );
 }

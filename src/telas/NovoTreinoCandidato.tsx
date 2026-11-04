@@ -14,6 +14,7 @@ import { ENTRADA_VAZIA, lerEntrada, type Entrada } from '../dominio/entrada';
 import { descreverDiferenca, formatarPercentual, formatarValor } from '../dominio/formato';
 import { EDITAL_CANDIDATO, regrasDoTreino } from '../dominio/regras';
 import type { ExercicioId, RegraMinimo, ResultadoRegistrado } from '../dominio/tipos';
+import { useConta } from '../hooks/useConta';
 import { cores } from '../tema';
 
 interface EstadoExercicio {
@@ -36,6 +37,7 @@ function Resultado({ regra, avaliacao }: { regra: RegraMinimo; avaliacao: Avalia
 
 export function NovoTreinoCandidato({ perfil }: { perfil: Perfil }) {
   const db = useSQLiteContext();
+  const { avisarMudanca } = useConta();
   const [data, setData] = useState(() => formatarData(hojeISO()));
   const [observacao, setObservacao] = useState('');
   const [estado, setEstado] = useState<Partial<Record<ExercicioId, EstadoExercicio>>>({});
@@ -86,6 +88,7 @@ export function NovoTreinoCandidato({ perfil }: { perfil: Perfil }) {
       setObservacao('');
       setData(formatarData(hojeISO()));
       Alert.alert('Treino salvo', `Aptos: ${avaliacao.aptos} de ${avaliacao.avaliados}`);
+      avisarMudanca();
       router.navigate('/');
     } catch (e) {
       Alert.alert('Erro ao salvar', String(e));

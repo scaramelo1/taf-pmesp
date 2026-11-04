@@ -21,7 +21,13 @@ aptos, "pronto para a prova" (3 treinos seguidos aptos), recorde e, por teste,
 gráfico com a linha do mínimo/20 pts, melhor marca, média recente, tendência,
 aprovação de primeira e o ponto fraco.
 
-Expo SDK 58 · Expo Router · expo-sqlite (dados ficam só no aparelho) ·
+**Conta e backup**: o app abre pedindo login com Google (obrigatório). Os treinos
+continuam no aparelho (funciona sem internet) e são enviados para o backup a cada
+mudança; ao entrar em outro celular com a mesma conta, tudo volta. Treinos de dois
+aparelhos são somados, e um treino excluído não volta. No Perfil dá para sair ou
+apagar a conta e o backup.
+
+Expo SDK 58 · Expo Router · expo-sqlite (banco no aparelho, com backup na nuvem) ·
 gráficos com react-native-gifted-charts (react-native-svg + expo-linear-gradient).
 
 ## Rodar no seu PC
@@ -69,3 +75,16 @@ Candidato: edite `src/dominio/regras/candidato.ts` (índices e `EDITAL_CANDIDATO
 TAF-3: `src/dominio/regras/taf3.ts` (linhas da tabela e pontos por faixa).
 Ajuste os testes em `src/dominio/__tests__`. Treinos antigos guardam o edital
 com que foram registrados.
+
+## Servidor (login e backup)
+
+Fica em `servidor/` (Node 22 puro, `node:sqlite`, sem dependências) e roda na VPS em
+https://fsadesigners.com.br/readytaf-api/ (porta 3101, serviço `readytaf`, até 80 MB).
+Do Google guarda só o identificador da conta e o primeiro nome; nada de e-mail.
+
+- Publicar ou atualizar: `bash servidor/instalar-vps.sh` (como root). Na primeira vez,
+  copia as credenciais do Google do Prancheta FC para `/etc/readytaf.env`.
+- No Google Cloud, a credencial precisa do URI de redirecionamento
+  `https://fsadesigners.com.br/readytaf-api/auth/google/retorno`.
+- Banco em `/var/lib/private/readytaf/`, backup diário em `/var/backups/readytaf/`.
+- Testes: `npm test` também roda os testes do servidor.

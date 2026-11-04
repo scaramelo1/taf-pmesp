@@ -1,0 +1,250 @@
+import Constants from 'expo-constants';
+import * as Crypto from 'expo-crypto';
+import * as Linking from 'expo-linking';
+import { useSQLiteContext } from 'expo-sqlite';
+import * as WebBrowser from 'expo-web-browser';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import type { ReactNode } from 'react';
+import { AppState, Platform } from 'react-native';
+
+import { ErroApi, aguardarLoginGoogle, criarCliente, urlDoLogin } from '../api/cliente';
+import type { Cliente } from '../api/cliente';
+import { sincronizar } from '../api/sincronizar';
+import {
+  aplicarCopia,
+  apagarConfig,
+  apagarDadosLocais,
+  lerConfig,
+  lerCopia,
+  salvarConfig,
+} from '../db/repositorio';
+
+const CHAVE_TOKEN = 'token';
+const CHAVE_NOME = 'nome';
+/** Conta dona dos dados deste aparelho; continua gravada mesmo se a sessão expirar. */
+const CHAVE_CONTA = 'conta';
+/** Cada pedido espera até 25 s no servidor: dá uns 5 minutos para escolher a conta. */
+const TENTATIVAS_DE_LOGIN = 12;
+/** Depois de fechar o navegador, o tempo para a sessão ainda chegar. */
+const FOLGA_AO_FECHAR_MS = 5_000;
+/** Junta várias mudanças seguidas num envio só. */
+const ESPERA_ENVIO_MS = 1_500;
+
+/** No Expo Go só o endereço exp:// abre o app; o esquema tafpmesp:// existe apenas no app instalado. */
+function enderecoDeRetorno() {
+  const servidor = Constants.expoConfig?.hostUri;
+  return servidor ? `exp://${servidor}/--/login` : Linking.createURL('login');
+}
+
+export type EstadoBackup = 'ok' | 'enviando' | 'pendente';
+
+interface ValorConta {
+  carregando: boolean;
+  /** Primeiro nome da conta Google; null fora da conta. */
+  nome: string | null;
+  backup: EstadoBackup;
+  /** Sobe quando o backup traz dados de outro aparelho: as telas recarregam. */
+  versaoDados: number;
+  entrarComGoogle: () => Promise<void>;
+  /** Chamar depois de gravar qualquer coisa no banco local. */
+  avisarMudanca: () => void;
+  /** Envia agora; devolve false se não conseguiu (sem internet, por exemplo). */
+  enviarBackup: () => Promise<boolean>;
+  sair: () => Promise<void>;
+  apagarConta: () => Promise<void>;
+}
+
+const Contexto = createContext<ValorConta | null>(null);
+
+export function ProvedorConta({ children }: { children: ReactNode }) {
+  const db = useSQLiteContext();
+  const [carregando, setCarregando] = useState(true);
+  const [nome, setNome] = useState<string | null>(null);
+  const [backup, setBackup] = useState<EstadoBackup>('ok');
+  const [versaoDados, setVersaoDados] = useState(0);
+  const cliente = useRef<Cliente | null>(null);
+  const emAndamento = useRef<Promise<boolean> | null>(null);
+  const deNovo = useRef(false);
+  const temporizador = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const encerrarSessao = useCallback(async () => {
+    cliente.current = null;
+    await apagarConfig(db, CHAVE_TOKEN);
+    setNome(null);
+  }, [db]);
+
+  const local = useMemo(
+    () => ({ ler: () => lerCopia(db), aplicar: (copia: Parameters<typeof aplicarCopia>[1]) => aplicarCopia(db, copia) }),
+    [db],
+  );
+
+  /** Uma sincronização por vez; mudanças feitas durante a atual geram mais uma rodada. */
+  const enviarBackup = useCallback((): Promise<boolean> => {
+    if (emAndamento.current) {
+      deNovo.current = true;
+      return emAndamento.current;
+    }
+    const rodar = async (): Promise<boolean> => {
+      const api = cliente.current;
+      if (!api) return false;
+      setBackup('enviando');
+      try {
+        do {
+          deNovo.current = false;
+          if (await sincronizar(api, local)) setVersaoDados((v) => v + 1);
+        } while (deNovo.current);
+        setBackup('ok');
+        return true;
+      } catch (erro) {
+        setBackup('pendente');
+        // Sessão apagada no servidor: volta para o login, mas os dados ficam no aparelho.
+        if (erro instanceof ErroApi && erro.status === 401) await encerrarSessao();
+        else console.warn('Backup não enviado', erro);
+        return false;
+      }
+    };
+    // Limpa depois de terminar (sempre assíncrono), mesmo quando rodar() volta na hora.
+    const tarefa = rodar().finally(() => {
+      emAndamento.current = null;
+    });
+    emAndamento.current = tarefa;
+    return tarefa;
+  }, [encerrarSessao, local]);
+
+  const avisarMudanca = useCallback(() => {
+    setBackup('pendente');
+    if (temporizador.current) clearTimeout(temporizador.current);
+    temporizador.current = setTimeout(() => {
+      temporizador.current = null;
+      void enviarBackup();
+    }, ESPERA_ENVIO_MS);
+  }, [enviarBackup]);
+
+  // Abre a sessão gravada e manda o que ficou pendente.
+  useEffect(() => {
+    let ativo = true;
+    (async () => {
+      const [token, nomeSalvo] = await Promise.all([lerConfig(db, CHAVE_TOKEN), lerConfig(db, CHAVE_NOME)]);
+      if (!ativo) return;
+      if (token) {
+        cliente.current = criarCliente(token);
+        setNome(nomeSalvo ?? '');
+        void enviarBackup();
+      }
+      setCarregando(false);
+    })().catch((erro: unknown) => {
+      console.error('Falha ao abrir a sessão', erro);
+      setCarregando(false);
+    });
+    return () => {
+      ativo = false;
+    };
+  }, [db, enviarBackup]);
+
+  // Ao voltar para o app, tenta de novo o que não foi enviado e busca o que veio de outros aparelhos.
+  useEffect(() => {
+    const assinatura = AppState.addEventListener('change', (estado) => {
+      if (estado === 'active' && cliente.current) void enviarBackup();
+    });
+    return () => assinatura.remove();
+  }, [enviarBackup]);
+
+  const entrarComGoogle = useCallback(async () => {
+    // O código só vale junto com o verificador, que nunca sai do aparelho.
+    const verificador = `${Crypto.randomUUID()}${Crypto.randomUUID()}`;
+    const hash = await Crypto.digestStringAsync(Crypto.CryptoDigestAlgorithm.SHA256, verificador, {
+      encoding: Crypto.CryptoEncoding.BASE64,
+    });
+    const desafio = hash.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+    const retorno = enderecoDeRetorno();
+    let ativo = true;
+
+    // A sessão vem direto do servidor, então o login funciona mesmo se o navegador não voltar ao app.
+    const esperarSessao = async () => {
+      for (let i = 0; i < TENTATIVAS_DE_LOGIN && ativo; i++) {
+        const resposta = await aguardarLoginGoogle(verificador);
+        if ('token' in resposta) return resposta;
+      }
+      return null;
+    };
+    const navegadorFechou = WebBrowser.openAuthSessionAsync(urlDoLogin(retorno, desafio), retorno)
+      .catch((falha: unknown) => {
+        console.warn('Navegador do login', falha);
+      })
+      .then(() => new Promise<null>((pronto) => setTimeout(() => pronto(null), FOLGA_AO_FECHAR_MS)));
+
+    try {
+      const sessao = await Promise.race([esperarSessao(), navegadorFechou]);
+      if (!sessao) return;
+      if (Platform.OS === 'ios') WebBrowser.dismissAuthSession();
+
+      // Outra pessoa entrando neste aparelho não leva os treinos de quem usava antes.
+      const contaAnterior = await lerConfig(db, CHAVE_CONTA);
+      if (contaAnterior && contaAnterior !== sessao.conta) await apagarDadosLocais(db);
+      await salvarConfig(db, CHAVE_TOKEN, sessao.token);
+      await salvarConfig(db, CHAVE_NOME, sessao.nome);
+      await salvarConfig(db, CHAVE_CONTA, sessao.conta);
+      cliente.current = criarCliente(sessao.token);
+
+      // Traz o backup antes de abrir o app, para o celular novo já mostrar os treinos.
+      await enviarBackup();
+      setNome(sessao.nome);
+    } catch (falha) {
+      console.error('Falha no login', falha);
+      const detalhe = falha instanceof ErroApi && falha.status === 0 ? ' Confira a internet.' : '';
+      throw new Error(`Não foi possível entrar com o Google.${detalhe}`);
+    } finally {
+      ativo = false;
+    }
+  }, [db, enviarBackup]);
+
+  /** Encerra a sessão e limpa o aparelho. A tela tenta enviar o backup e confirma antes. */
+  const sair = useCallback(async () => {
+    await cliente.current?.sair().catch(() => undefined);
+    await apagarDadosLocais(db);
+    await apagarConfig(db, CHAVE_CONTA);
+    await apagarConfig(db, CHAVE_NOME);
+    await encerrarSessao();
+    setBackup('ok');
+  }, [db, encerrarSessao]);
+
+  const apagarConta = useCallback(async () => {
+    const api = cliente.current;
+    if (!api) return;
+    try {
+      await api.apagarConta();
+    } catch (erro) {
+      throw new Error(
+        erro instanceof ErroApi && erro.status === 0 ? 'Sem internet: a conta não foi apagada.' : 'Não foi possível apagar a conta.',
+      );
+    }
+    await apagarDadosLocais(db);
+    await apagarConfig(db, CHAVE_CONTA);
+    await apagarConfig(db, CHAVE_NOME);
+    await encerrarSessao();
+    setBackup('ok');
+  }, [db, encerrarSessao]);
+
+  const valor = useMemo<ValorConta>(
+    () => ({
+      carregando,
+      nome,
+      backup,
+      versaoDados,
+      entrarComGoogle,
+      avisarMudanca,
+      enviarBackup,
+      sair,
+      apagarConta,
+    }),
+    [carregando, nome, backup, versaoDados, entrarComGoogle, avisarMudanca, enviarBackup, sair, apagarConta],
+  );
+
+  return <Contexto.Provider value={valor}>{children}</Contexto.Provider>;
+}
+
+export function useConta() {
+  const valor = useContext(Contexto);
+  if (!valor) throw new Error('useConta fora do ProvedorConta');
+  return valor;
+}

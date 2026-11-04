@@ -1,0 +1,26 @@
+# Copiar para /etc/systemd/system/. O limite de memória protege os outros sistemas da VPS:
+# se passar dele, só o servidor do ReadyTAF reinicia.
+[Unit]
+Description=Servidor do ReadyTAF (login e backup)
+After=network.target
+
+[Service]
+WorkingDirectory=/var/www/taf-pmesp
+ExecStart=/usr/bin/env node --no-warnings --max-old-space-size=48 servidor/index.ts
+Environment=PORTA=3101
+# Credenciais do Google: arquivo só do root, fora do repositório.
+EnvironmentFile=-/etc/readytaf.env
+Environment=BANCO=/var/lib/readytaf/readytaf.db
+DynamicUser=yes
+StateDirectory=readytaf
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+MemoryMax=80M
+MemorySwapMax=30M
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

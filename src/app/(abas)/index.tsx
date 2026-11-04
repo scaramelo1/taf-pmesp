@@ -3,17 +3,18 @@ import { useSQLiteContext } from 'expo-sqlite';
 import { useCallback, useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 
-import { Cartao, Selo, SeloPontos, estilos as ui, TextoSuave, Titulo } from '../componentes/ui';
-import { listarTreinos, obterPerfil, type Perfil, type Treino } from '../db/repositorio';
-import { avaliarTreino } from '../dominio/avaliacao';
-import { diasEntre, formatarData, hojeISO, idadeEm } from '../dominio/datas';
-import { descreverDiferenca, formatarValor } from '../dominio/formato';
-import { avaliarTreinoPontos, descreverPontos, faixaDaIdade, testesQueContam, valorParaPontos } from '../dominio/pontuacao';
-import { EDITAL_CANDIDATO, EDITAL_TAF3, ehEfetivo, regrasDoTreino, TABELAS_TAF3 } from '../dominio/regras';
-import { regrasCandidato } from '../dominio/regras/candidato';
-import { PONTOS_MINIMOS_TOTAL, PONTOS_SUFICIENCIA, rotuloFaixa } from '../dominio/regras/taf3';
-import type { Sexo } from '../dominio/tipos';
-import { cores, espaco } from '../tema';
+import { Cartao, Selo, SeloPontos, estilos as ui, TextoSuave, Titulo } from '../../componentes/ui';
+import { listarTreinos, obterPerfil, type Perfil, type Treino } from '../../db/repositorio';
+import { avaliarTreino } from '../../dominio/avaliacao';
+import { diasEntre, formatarData, hojeISO, idadeEm } from '../../dominio/datas';
+import { descreverDiferenca, formatarValor } from '../../dominio/formato';
+import { avaliarTreinoPontos, descreverPontos, faixaDaIdade, testesQueContam, valorParaPontos } from '../../dominio/pontuacao';
+import { EDITAL_CANDIDATO, EDITAL_TAF3, ehEfetivo, regrasDoTreino, TABELAS_TAF3 } from '../../dominio/regras';
+import { regrasCandidato } from '../../dominio/regras/candidato';
+import { PONTOS_MINIMOS_TOTAL, PONTOS_SUFICIENCIA, rotuloFaixa } from '../../dominio/regras/taf3';
+import type { Sexo } from '../../dominio/tipos';
+import { useConta } from '../../hooks/useConta';
+import { cores, espaco } from '../../tema';
 
 function UltimoCandidato({ treino }: { treino: Treino }) {
   const av = avaliarTreino(regrasDoTreino(treino), treino.resultados);
@@ -131,6 +132,7 @@ function TabelaEfetivo({ idade, sexo }: { idade: number; sexo: Sexo }) {
 
 export default function Inicio() {
   const db = useSQLiteContext();
+  const { versaoDados } = useConta();
   const [perfil, setPerfil] = useState<Perfil | null>(null);
   const [ultimo, setUltimo] = useState<Treino | null>(null);
 
@@ -138,7 +140,7 @@ export default function Inicio() {
     useCallback(() => {
       obterPerfil(db).then(setPerfil);
       listarTreinos(db).then((t) => setUltimo(t[0] ?? null));
-    }, [db]),
+    }, [db, versaoDados]),
   );
 
   const hoje = hojeISO();

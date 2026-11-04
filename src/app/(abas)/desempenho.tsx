@@ -2,9 +2,9 @@ import { Link } from 'expo-router';
 import type { ReactNode } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 
-import { GraficoLinha } from '../componentes/GraficoLinha';
-import { Cartao, SetaTendencia, estilos as ui, TextoSuave, Titulo } from '../componentes/ui';
-import { formatarData, hojeISO, idadeEm } from '../dominio/datas';
+import { GraficoLinha } from '../../componentes/GraficoLinha';
+import { Cartao, SetaTendencia, estilos as ui, TextoSuave, Titulo } from '../../componentes/ui';
+import { formatarData, hojeISO, idadeEm } from '../../dominio/datas';
 import {
   avaliadosDoModo,
   desempenhoGeral,
@@ -12,14 +12,14 @@ import {
   exerciciosEfetivo,
   pontoFraco,
   type DesempenhoExercicio,
-} from '../dominio/desempenho';
-import { formatarEixo, formatarNota, formatarPercentual, formatarValor } from '../dominio/formato';
-import { TABELAS_TAF3 } from '../dominio/regras';
-import { regrasCandidato } from '../dominio/regras/candidato';
-import { PONTOS_MINIMOS_TOTAL } from '../dominio/regras/taf3';
-import type { Modo } from '../dominio/tipos';
-import { useHistorico } from '../hooks/useHistorico';
-import { cores, espaco } from '../tema';
+} from '../../dominio/desempenho';
+import { formatarEixo, formatarNota, formatarPercentual, formatarValor } from '../../dominio/formato';
+import { TABELAS_TAF3 } from '../../dominio/regras';
+import { regrasCandidato } from '../../dominio/regras/candidato';
+import { PONTOS_MINIMOS_TOTAL } from '../../dominio/regras/taf3';
+import type { Modo } from '../../dominio/tipos';
+import { useHistorico } from '../../hooks/useHistorico';
+import { cores, espaco } from '../../tema';
 
 const TEXTO_TENDENCIA = { melhorou: 'melhorando', piorou: 'piorando', manteve: 'estável' };
 

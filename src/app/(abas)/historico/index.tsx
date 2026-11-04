@@ -2,15 +2,17 @@ import { Link, router } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
 import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { confirmarExclusao, resumoTreino, SeloTreino } from '../../componentes/historico';
-import { Cartao, SetaTendencia, estilos as ui, TextoSuave, Titulo } from '../../componentes/ui';
-import { formatarData } from '../../dominio/datas';
-import { formatarVariacao } from '../../dominio/formato';
-import { useHistorico } from '../../hooks/useHistorico';
-import { cores, espaco } from '../../tema';
+import { confirmarExclusao, resumoTreino, SeloTreino } from '../../../componentes/historico';
+import { Cartao, SetaTendencia, estilos as ui, TextoSuave, Titulo } from '../../../componentes/ui';
+import { formatarData } from '../../../dominio/datas';
+import { formatarVariacao } from '../../../dominio/formato';
+import { useConta } from '../../../hooks/useConta';
+import { useHistorico } from '../../../hooks/useHistorico';
+import { cores, espaco } from '../../../tema';
 
 export default function Historico() {
   const db = useSQLiteContext();
+  const { avisarMudanca } = useConta();
   const [dados, recarregar] = useHistorico();
 
   if (!dados) return <View style={ui.tela} />;
@@ -45,7 +47,7 @@ export default function Historico() {
       renderItem={({ item: h }) => (
         <Pressable
           onPress={() => router.push({ pathname: '/historico/[id]', params: { id: String(h.treino.id) } })}
-          onLongPress={() => confirmarExclusao(db, h.treino, recarregar)}
+          onLongPress={() => confirmarExclusao(db, h.treino, recarregar, avisarMudanca)}
           accessibilityRole="button"
           accessibilityHint="Abre o detalhe do treino"
           style={({ pressed }) => [ui.cartao, pressed && { opacity: 0.7 }]}

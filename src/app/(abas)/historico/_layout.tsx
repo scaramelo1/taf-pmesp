@@ -1,6 +1,6 @@
 import { Stack } from 'expo-router';
 
-import { cores } from '../../tema';
+import { cores } from '../../../tema';
 
 export default function HistoricoLayout() {
   return (

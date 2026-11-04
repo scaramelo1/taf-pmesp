@@ -39,3 +39,6 @@ yarn-error.*
 # generated native folders
 /ios
 /android
+
+# Banco do servidor (dados das contas)
+servidor/dados/

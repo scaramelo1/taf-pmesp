@@ -3,11 +3,11 @@ import { useSQLiteContext } from 'expo-sqlite';
 import { useCallback, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
-import { Cartao, estilos as ui, TextoSuave, Titulo } from '../componentes/ui';
-import { obterPerfil, type Perfil } from '../db/repositorio';
-import { NovoTreinoCandidato } from '../telas/NovoTreinoCandidato';
-import { NovoTreinoEfetivo } from '../telas/NovoTreinoEfetivo';
-import { cores } from '../tema';
+import { Cartao, estilos as ui, TextoSuave, Titulo } from '../../componentes/ui';
+import { obterPerfil, type Perfil } from '../../db/repositorio';
+import { NovoTreinoCandidato } from '../../telas/NovoTreinoCandidato';
+import { NovoTreinoEfetivo } from '../../telas/NovoTreinoEfetivo';
+import { cores } from '../../tema';
 
 function Aviso({ titulo, texto }: { titulo: string; texto: string }) {
   return (

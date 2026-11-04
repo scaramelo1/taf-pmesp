@@ -1,6 +1,6 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
 
-const VERSAO_ATUAL = 2;
+const VERSAO_ATUAL = 3;
 
 /** Passado como onInit do SQLiteProvider; roda a cada abertura do banco. */
 export async function migrar(db: SQLiteDatabase) {
@@ -51,6 +51,29 @@ export async function migrar(db: SQLiteDatabase) {
   if (versao < 2) {
     // Idade na data do treino: define a faixa etária da tabela do TAF-3.
     await db.execAsync('ALTER TABLE treino ADD COLUMN idade INTEGER');
+  }
+
+  if (versao < 3) {
+    // Backup na nuvem: uid identifica o treino em qualquer aparelho, e as exclusões
+    // ficam anotadas para o treino não voltar pelo backup.
+    // Numa transação só, com a versão junto: se o app fechar no meio, nada fica pela metade.
+    await db.withTransactionAsync(async () => {
+      await db.execAsync(`
+      ALTER TABLE treino ADD COLUMN uid TEXT;
+      UPDATE treino SET uid = lower(hex(randomblob(16))) WHERE uid IS NULL;
+      CREATE UNIQUE INDEX idx_treino_uid ON treino (uid);
+
+      -- Perfil antigo recebe uma data antiga: qualquer alteração feita depois vale mais que ele.
+      ALTER TABLE perfil ADD COLUMN atualizado_em TEXT NOT NULL DEFAULT '2000-01-01T00:00:00.000Z';
+
+      CREATE TABLE treino_excluido (uid TEXT PRIMARY KEY);
+
+      -- Sessão da conta e outras preferências do aparelho.
+      CREATE TABLE config (chave TEXT PRIMARY KEY, valor TEXT NOT NULL);
+
+      PRAGMA user_version = 3;
+      `);
+    });
   }
 
   await db.execAsync(`PRAGMA user_version = ${VERSAO_ATUAL}`);
