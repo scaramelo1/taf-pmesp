@@ -6,3 +6,7 @@ AddType application/vnd.android.package-archive .apk
     Header set Cache-Control "no-cache"
 </FilesMatch>
 Header set X-Robots-Tag "noindex, nofollow"
+# O número sai na página; o arquivo em si e o contador.php não são acessados direto.
+<FilesMatch "^(downloads\.txt|contador\.php)$">
+    Require all denied
+</FilesMatch>

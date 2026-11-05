@@ -1,10 +1,11 @@
 <?php
+require __DIR__ . '/contador.php';
 // O botão aparece sozinho quando readytaf.apk é colocado nesta pasta.
 $apk = __DIR__ . '/readytaf.apk';
 $temApk = is_file($apk);
 $tamanho = $temApk ? number_format(filesize($apk) / 1048576, 0, ',', '.') . ' MB' : '';
 $data = $temApk ? date('d/m/Y', filemtime($apk)) : '';
-$versao = $temApk ? filemtime($apk) : 0;
+$downloads = lerDownloads();
 ?>
 <!doctype html>
 <html lang="pt-BR">
@@ -36,6 +37,8 @@ $versao = $temApk ? filemtime($apk) : 0;
     background: var(--destaque); color: var(--sobre); font-size: 18px; font-weight: 700;
   }
   .botao:focus-visible { outline: 3px solid var(--texto); outline-offset: 2px; }
+  .contador { text-align: center; margin: 14px 0 0; color: var(--suave); font-size: 15px; }
+  .contador strong { color: var(--destaque); font-size: 22px; }
   .aguarde { padding: 16px; border: 1px solid var(--borda); border-radius: 12px; text-align: center; color: var(--suave); }
   .info { color: var(--suave); font-size: 14px; text-align: center; margin: 10px 0 0; }
   .aviso { display: none; background: var(--cartao); border-left: 4px solid var(--destaque); border-radius: 8px; padding: 12px 14px; margin: 0 0 16px; text-align: left; }
@@ -65,7 +68,8 @@ $versao = $temApk ? filemtime($apk) : 0;
     <p>Registre seus treinos do TAF da PMESP, veja se está apto e acompanhe sua evolução até a prova.</p>
     <div class="aviso" id="iphone">Por enquanto o app existe só para Android. Abra esta página em um celular Android para baixar.</div>
 <?php if ($temApk): ?>
-    <a class="botao" href="readytaf.apk?v=<?= $versao ?>">Baixar para Android</a>
+    <a class="botao" href="baixar.php">Baixar para Android</a>
+    <p class="contador"><strong><?= number_format($downloads, 0, ',', '.') ?></strong> <?= $downloads === 1 ? 'download' : 'downloads' ?></p>
     <p class="info"><?= $tamanho ?> · atualizado em <?= $data ?></p>
 <?php else: ?>
     <div class="aguarde">O download estará disponível em breve.</div>

@@ -8,11 +8,12 @@ DESTINO=/var/www/fsa-designer/readytaf
 CONF=/etc/apache2/sites-enabled/fsadesigners-le-ssl.conf
 
 mkdir -p "$DESTINO"
-cp "$ORIGEM/index.php" "$ORIGEM/icone.png" "$ORIGEM/.htaccess" "$DESTINO/"
+cp "$ORIGEM/index.php" "$ORIGEM/baixar.php" "$ORIGEM/contador.php" "$ORIGEM/icone.png" "$ORIGEM/.htaccess" "$DESTINO/"
 if [ $# -ge 1 ]; then
   cp "$1" "$DESTINO/readytaf.apk.novo"
   mv "$DESTINO/readytaf.apk.novo" "$DESTINO/readytaf.apk"   # troca de uma vez: ninguém baixa pela metade
 fi
+[ -f "$DESTINO/downloads.txt" ] || echo 0 > "$DESTINO/downloads.txt"   # o total nunca é apagado
 chown -R www-data:www-data "$DESTINO"
 
 # A página é do próprio app: fica fora da marca d'água dos projetos de clientes.
@@ -31,6 +32,7 @@ fi
 sleep 1
 echo "Página:       $(curl -s -o /dev/null -w '%{http_code}' -m 10 https://fsadesigners.com.br/readytaf/)"
 echo "Marca d'água: $(curl -s -m 10 https://fsadesigners.com.br/readytaf/ | grep -c marca-dagua || true) (tem que ser 0)"
+echo "Downloads:    $(cat "$DESTINO/downloads.txt")"
 echo "Prancheta:    $(curl -s -o /dev/null -w '%{http_code}' -m 10 https://fsadesigners.com.br/prancheta/)"
 echo "FSA Designer: $(curl -s -o /dev/null -w '%{http_code}' -m 10 https://fsadesigners.com.br/)"
 if [ -f "$DESTINO/readytaf.apk" ]; then
