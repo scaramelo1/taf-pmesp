@@ -117,3 +117,31 @@ com o assunto "Apagar conta ReadyTAF", a partir do Gmail usado no login. Apagamo
 <p>Tudo: identificador da conta Google, nome, e-mail, foto, perfil e todos os treinos. As cópias de segurança do servidor somem em até 14 dias.
 Nada é mantido depois disso.</p>
 `);
+
+const escapar = (texto: string) =>
+  texto.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
+/** Aparece no navegador do login quando o app instalado é mais velho que o publicado. */
+export const paginaAtualizar = (versao: string, link: string, continuar: string) => `<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Atualize o ReadyTAF</title>
+<style>
+body{margin:0;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:24px;box-sizing:border-box;background:#12223A;color:#fff;font:16px/1.5 system-ui,sans-serif;text-align:center}
+img{width:88px;height:88px;border-radius:20px}
+h1{font-size:22px;margin:0}
+p{margin:0;max-width:360px;color:#C9D3E0}
+.baixar{background:#F57C1F;color:#fff;font-weight:700;text-decoration:none;padding:14px 28px;border-radius:10px}
+.depois{color:#C9D3E0;font-size:14px}
+</style>
+</head>
+<body>
+<img src="../../icone.png" alt="">
+<h1>Saiu a versão ${escapar(versao)} do ReadyTAF</h1>
+<p>Baixe e instale por cima do app que você já tem. Seus treinos continuam salvos.</p>
+<a class="baixar" href="${escapar(link)}">Baixar a versão nova</a>
+<a class="depois" href="${escapar(continuar)}">Continuar com a versão antiga</a>
+</body>
+</html>`;

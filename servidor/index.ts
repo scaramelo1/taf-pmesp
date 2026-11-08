@@ -17,6 +17,17 @@ const api = criarApi(banco, {
   google: GOOGLE_CLIENT_ID && GOOGLE_CLIENT_SECRET
     ? { clientId: GOOGLE_CLIENT_ID, clientSecret: GOOGLE_CLIENT_SECRET, urlPublica: URL_PUBLICA }
     : undefined,
+  versao: {
+    // publicar.sh grava a versão do APK publicado.
+    lerAtual: () => {
+      try {
+        return readFileSync(process.env.VERSAO_APK ?? '/var/www/fsa-designer/readytaf/versao.txt', 'utf8').trim() || null;
+      } catch {
+        return null;
+      }
+    },
+    link: process.env.LINK_DOWNLOAD ?? 'https://fsadesigners.com.br/readytaf/',
+  },
   admin: {
     senha: process.env.ADMIN_SENHA || undefined,
     emails: (process.env.ADMIN_EMAILS ?? '').split(','),

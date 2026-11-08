@@ -7,6 +7,7 @@ import { Botao, Campo, Cartao, estilos, Rotulo, Segmentado, TextoSuave } from '.
 import { obterPerfil, salvarPerfil, type Modo } from '../../db/repositorio';
 import { formatarData, hojeISO, lerData, mascararData } from '../../dominio/datas';
 import type { Cargo, Sexo } from '../../dominio/tipos';
+import { VERSAO_INSTALADA } from '../../hooks/useAvisoDeVersao';
 import { useConta, type EstadoBackup } from '../../hooks/useConta';
 import { cores } from '../../tema';
 
@@ -145,6 +146,7 @@ export default function PerfilTela() {
       <Botao titulo="Salvar perfil" onPress={salvar} desabilitado={salvando || !!erroNascimento || !!erroProva} />
 
       <CartaoConta />
+      {VERSAO_INSTALADA ? <TextoSuave>{`ReadyTAF versão ${VERSAO_INSTALADA}`}</TextoSuave> : null}
     </ScrollView>
   );
 }

@@ -9,7 +9,8 @@ import type { BancoSqlite, Conta } from './banco.ts';
 import { LoginGoogle, paginaDeRetorno } from './google.ts';
 import { AcessoAdmin, paginaAdmin, paginaAdminDesligado, paginaEntrarAdmin, resumirAdmin } from './admin.ts';
 import type { ConfigAdmin } from './admin.ts';
-import { paginaApagarConta, paginaInicial, paginaPrivacidade } from './paginas.ts';
+import { paginaApagarConta, paginaAtualizar, paginaInicial, paginaPrivacidade } from './paginas.ts';
+import { precisaAtualizar, versaoValida } from '../src/dominio/versao.ts';
 import type { ConfigGoogle, UsuarioGoogle } from './google.ts';
 
 /** Uns 10 mil treinos cabem com folga. */
@@ -68,6 +69,8 @@ export interface OpcoesApi {
   relogio?: () => number;
   google?: ConfigGoogle;
   admin?: ConfigAdmin;
+  /** Versão do APK publicado na página de download, para o app avisar quando há uma nova. */
+  versao?: { lerAtual: () => string | null; link: string };
   /** Só nos testes: entra sem passar pelo Google. */
   loginDeTeste?: boolean;
 }
@@ -154,6 +157,11 @@ export function criarApi(banco: BancoSqlite, opcoes: OpcoesApi = {}): Server {
 
     if (rota === 'GET /saude') return ok({ ok: true });
 
+    if (rota === 'GET /versao') {
+      const atual = opcoes.versao?.lerAtual() ?? null;
+      return ok({ versao: versaoValida(atual) ? atual : null, link: opcoes.versao?.link ?? null });
+    }
+
     const html = req.method === 'GET' ? PAGINAS[pathname] : undefined;
     if (html) {
       res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'public, max-age=3600' });
@@ -169,6 +177,13 @@ export function criarApi(banco: BancoSqlite, opcoes: OpcoesApi = {}): Server {
 
     if (rota === 'GET /auth/google/inicio') {
       if (!login) throw new ErroHttp(503, 'Login com Google indisponível');
+      // Antes da 1.2.0 o app não mandava a versão: quem não manda é de uma versão antiga.
+      const atual = opcoes.versao?.lerAtual() ?? null;
+      if (opcoes.versao && params.get('continuar') !== '1' && precisaAtualizar(params.get('versao') ?? '1.1.0', atual)) {
+        const continuar = new URLSearchParams(params);
+        continuar.set('continuar', '1');
+        return enviarHtml(res, 200, paginaAtualizar(atual as string, opcoes.versao.link, `inicio?${continuar.toString()}`));
+      }
       const destino = login.iniciar(params.get('retorno'), params.get('desafio'));
       if (!destino) throw new ErroHttp(400, 'Pedido de login inválido');
       res.writeHead(302, { Location: destino, 'Cache-Control': 'no-store' });

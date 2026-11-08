@@ -86,8 +86,19 @@ export interface Backup {
   dados: CopiaDados | null;
 }
 
+/** Versão instalada; o servidor mostra o aviso de atualização no login de quem está atrasado. */
+let versaoDoApp: string | null = null;
+export const definirVersaoDoApp = (versao: string | null | undefined) => {
+  versaoDoApp = versao ?? null;
+};
+
 export const urlDoLogin = (retorno: string, desafio: string, base = URL_API) =>
-  `${base}/auth/google/inicio?retorno=${encodeURIComponent(retorno)}&desafio=${encodeURIComponent(desafio)}`;
+  `${base}/auth/google/inicio?retorno=${encodeURIComponent(retorno)}&desafio=${encodeURIComponent(desafio)}`
+  + (versaoDoApp ? `&versao=${encodeURIComponent(versaoDoApp)}` : '');
+
+/** Versão do APK publicado na página de download. */
+export const lerVersaoPublicada = (base = URL_API) =>
+  pedir<{ versao: string | null; link: string | null }>(base, '/versao', null);
 
 /** Espera o login no navegador terminar; o servidor segura cada pedido por até 25 s. */
 export const aguardarLoginGoogle = (verificador: string, base = URL_API) =>

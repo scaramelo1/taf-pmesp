@@ -28,6 +28,11 @@ if [ $# -ge 1 ]; then
   mv "$NOVO" "$DESTINO/readytaf.apk"   # troca de uma vez: ninguém baixa pela metade
 fi
 [ -f "$DESTINO/downloads.txt" ] || echo 0 > "$DESTINO/downloads.txt"   # o total nunca é apagado
+# Versão do APK publicado: o app e o login avisam quem está com uma versão mais velha.
+if [ -f "$DESTINO/readytaf.apk" ]; then
+  VERSAO=$(unzip -p "$DESTINO/readytaf.apk" assets/app.config 2>/dev/null | grep -o '"version":"[0-9.]*"' | head -1 | cut -d'"' -f4 || true)
+  if [ -n "$VERSAO" ]; then echo "$VERSAO" > "$DESTINO/versao.txt"; fi
+fi
 chown -R www-data:www-data "$DESTINO"
 
 # A página é do próprio app: fica fora da marca d'água dos projetos de clientes.
@@ -47,6 +52,7 @@ sleep 1
 echo "Página:       $(curl -s -o /dev/null -w '%{http_code}' -m 10 https://fsadesigners.com.br/readytaf/)"
 echo "Marca d'água: $(curl -s -m 10 https://fsadesigners.com.br/readytaf/ | grep -c marca-dagua || true) (tem que ser 0)"
 echo "Downloads:    $(cat "$DESTINO/downloads.txt")"
+echo "Versão:       $(cat "$DESTINO/versao.txt" 2>/dev/null || echo '?')  (API: $(curl -s -m 10 https://fsadesigners.com.br/readytaf-api/versao))"
 echo "Prancheta:    $(curl -s -o /dev/null -w '%{http_code}' -m 10 https://fsadesigners.com.br/prancheta/)"
 echo "FSA Designer: $(curl -s -o /dev/null -w '%{http_code}' -m 10 https://fsadesigners.com.br/)"
 if [ -f "$DESTINO/readytaf.apk" ]; then

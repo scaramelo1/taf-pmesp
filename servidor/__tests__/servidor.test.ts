@@ -47,6 +47,7 @@ const desafioDe = (verificador: string) => createHash('sha256').update(verificad
 describe('servidor do ReadyTAF', () => {
   const banco = new BancoSqlite(':memory:');
   let idTokenFalso = '';
+  let versaoPublicada: string | null = '1.1.0';
   const api = criarApi(banco, {
     loginDeTeste: true,
     google: {
@@ -56,6 +57,7 @@ describe('servidor do ReadyTAF', () => {
       trocarCodigo: async () => idTokenFalso,
       esperaMs: 300,
     },
+    versao: { lerAtual: () => versaoPublicada, link: 'https://exemplo.test/readytaf/' },
     admin: { senha: 'senha-certa', emails: ['Chefe@Exemplo.test'], lerDownloads: () => 10 },
   });
   let base = '';
@@ -281,6 +283,31 @@ describe('servidor do ReadyTAF', () => {
     assert.equal(r.dias[r.dias.length - 2].treinos, 1);
     assert.equal(r.dias[r.dias.length - 2].cadastros, 1);
     assert.equal(r.linhas[0].nome, 'Ana Lima');
+  });
+
+  it('versão publicada e aviso de atualização no login', async () => {
+    versaoPublicada = '1.2.0';
+    try {
+      assert.deepEqual(await (await fetch(`${base}/versao`)).json(), { versao: '1.2.0', link: 'https://exemplo.test/readytaf/' });
+      const desafio = desafioDe('a'.repeat(64));
+
+      // App antigo (não manda a versão): vê a página para baixar, com a opção de continuar.
+      const antigo = await fetch(urlDoLogin('tafpmesp://login', desafio, base), { redirect: 'manual' });
+      assert.equal(antigo.status, 200);
+      const pagina = await antigo.text();
+      assert.match(pagina, /Saiu a versão 1\.2\.0/);
+      assert.match(pagina, /href="https:\/\/exemplo\.test\/readytaf\/"/);
+      const continuar = /href="(inicio\?[^"]+)"/.exec(pagina)?.[1].replace(/&amp;/g, '&') as string;
+      assert.equal((await fetch(`${base}/auth/google/${continuar}`, { redirect: 'manual' })).status, 302);
+
+      // App em dia vai direto para o Google.
+      assert.equal((await fetch(`${urlDoLogin('tafpmesp://login', desafio, base)}&versao=1.2.0`, { redirect: 'manual' })).status, 302);
+
+      versaoPublicada = 'lixo<script>';
+      assert.deepEqual(await (await fetch(`${base}/versao`)).json(), { versao: null, link: 'https://exemplo.test/readytaf/' });
+    } finally {
+      versaoPublicada = '1.1.0';
+    }
   });
 
   it('página de retorno escapa o endereço', () => {

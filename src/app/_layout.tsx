@@ -3,6 +3,7 @@ import { SQLiteProvider } from 'expo-sqlite';
 import { StatusBar } from 'expo-status-bar';
 
 import { migrar } from '../db/migracoes';
+import { useAvisoDeVersao } from '../hooks/useAvisoDeVersao';
 import { ProvedorConta, useConta } from '../hooks/useConta';
 import { cores } from '../tema';
 
@@ -12,6 +13,7 @@ SplashScreen.preventAutoHideAsync();
 /** O login com Google é obrigatório: sem conta, só a tela de login existe. */
 function Navegacao() {
   const { carregando, nome } = useConta();
+  useAvisoDeVersao();
   if (carregando) return null;
   SplashScreen.hide();
   const logado = nome !== null;
