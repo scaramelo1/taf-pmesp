@@ -7,6 +7,8 @@ import { gzipSync } from 'node:zlib';
 import { validarCopia } from '../src/dominio/sincronia.ts';
 import type { BancoSqlite, Conta } from './banco.ts';
 import { LoginGoogle, paginaDeRetorno } from './google.ts';
+import { AcessoAdmin, paginaAdmin, paginaAdminDesligado, paginaEntrarAdmin, resumirAdmin } from './admin.ts';
+import type { ConfigAdmin } from './admin.ts';
 import { paginaApagarConta, paginaInicial, paginaPrivacidade } from './paginas.ts';
 import type { ConfigGoogle, UsuarioGoogle } from './google.ts';
 
@@ -65,6 +67,7 @@ function responder(req: IncomingMessage, res: ServerResponse, status: number, co
 export interface OpcoesApi {
   relogio?: () => number;
   google?: ConfigGoogle;
+  admin?: ConfigAdmin;
   /** Só nos testes: entra sem passar pelo Google. */
   loginDeTeste?: boolean;
 }
@@ -72,6 +75,40 @@ export interface OpcoesApi {
 export function criarApi(banco: BancoSqlite, opcoes: OpcoesApi = {}): Server {
   const { relogio = Date.now, google, loginDeTeste = false } = opcoes;
   const login = google ? new LoginGoogle(google, relogio) : null;
+  const { admin } = opcoes;
+  const acessoAdmin = admin?.senha ? new AcessoAdmin(admin.senha, relogio) : null;
+  const emailsAdmin = new Set((admin?.emails ?? []).map((e) => e.trim().toLowerCase()).filter(Boolean));
+  const ehAdmin = (conta: Conta) => !!conta.email && emailsAdmin.has(conta.email.toLowerCase());
+  // O cookie só vai para as páginas do admin, no caminho público (atrás do Apache).
+  const caminhoAdmin = `${google ? new URL(google.urlPublica).pathname.replace(/\/$/, '') : ''}/admin`;
+
+  function cookieAdmin(req: IncomingMessage) {
+    const achado = String(req.headers.cookie ?? '').split(/;\s*/).find((c) => c.startsWith('rtadmin='));
+    return achado ? achado.slice('rtadmin='.length) : null;
+  }
+
+  const ipDe = (req: IncomingMessage) => String(req.headers['x-real-ip'] ?? req.socket.remoteAddress ?? '');
+
+  function enviarHtml(res: ServerResponse, status: number, corpo: string, extras: Record<string, string> = {}) {
+    res.writeHead(status, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store', ...extras });
+    res.end(corpo);
+  }
+
+  function resumoAtual() {
+    const agora = relogio();
+    return { agora, resumo: resumirAdmin(banco.contasParaAdmin(), agora), downloads: admin?.lerDownloads?.() ?? null };
+  }
+
+  async function lerFormulario(req: IncomingMessage) {
+    const partes: Buffer[] = [];
+    let tamanho = 0;
+    for await (const parte of req) {
+      tamanho += (parte as Buffer).length;
+      if (tamanho > 10_000) throw new ErroHttp(413, 'Requisição grande demais');
+      partes.push(parte as Buffer);
+    }
+    return new URLSearchParams(Buffer.concat(partes).toString('utf8'));
+  }
 
   function tokenDe(req: IncomingMessage) {
     const [tipo, token] = String(req.headers.authorization ?? '').split(' ');
@@ -86,18 +123,28 @@ export function criarApi(banco: BancoSqlite, opcoes: OpcoesApi = {}): Server {
     return conta;
   }
 
+  const dadosDaConta = (conta: Conta) => ({
+    nome: conta.nome,
+    nomeCompleto: conta.nomeCompleto ?? conta.nome,
+    email: conta.email,
+    foto: conta.foto,
+    conta: conta.id,
+    admin: ehAdmin(conta),
+  });
+
   function abrirSessao(usuario: UsuarioGoogle) {
+    const google = { nome: usuario.nome, nomeCompleto: usuario.nomeCompleto, email: usuario.email, foto: usuario.foto };
     let conta = banco.contaPorGoogle(usuario.sub);
     if (!conta) {
-      conta = { id: randomUUID(), nome: usuario.nome };
-      banco.criarConta(conta.id, usuario.sub, usuario.nome);
-    } else if (conta.nome !== usuario.nome) {
-      banco.atualizarNome(conta.id, usuario.nome);
-      conta = { ...conta, nome: usuario.nome };
+      conta = { id: randomUUID(), ...google };
+      banco.criarConta(conta.id, usuario.sub, google);
+    } else {
+      banco.atualizarGoogle(conta.id, google);
+      conta = { ...conta, ...google };
     }
     const token = randomBytes(32).toString('base64url');
     banco.criarSessao(conta.id, hashDoToken(token));
-    return { token, nome: conta.nome, conta: conta.id };
+    return { token, ...dadosDaConta(conta) };
   }
 
   async function atender(req: IncomingMessage, res: ServerResponse) {
@@ -158,13 +205,60 @@ export function criarApi(banco: BancoSqlite, opcoes: OpcoesApi = {}): Server {
     }
 
     if (rota === 'POST /auth/teste' && loginDeTeste) {
-      const { sub, nome } = await lerCorpo(req);
-      return ok(abrirSessao({ sub: String(sub), nome: String(nome) }));
+      const { sub, nome, email, foto } = await lerCorpo(req);
+      return ok(abrirSessao({
+        sub: String(sub),
+        nome: String(nome),
+        nomeCompleto: String(nome),
+        email: typeof email === 'string' ? email : null,
+        foto: typeof foto === 'string' ? foto : null,
+      }));
+    }
+
+    // Página de admin no site: senha + cookie.
+    if (rota === 'GET /admin') {
+      if (!acessoAdmin) return enviarHtml(res, 503, paginaAdminDesligado());
+      if (!acessoAdmin.valido(cookieAdmin(req))) return enviarHtml(res, 200, paginaEntrarAdmin());
+      const { agora, resumo, downloads } = resumoAtual();
+      return enviarHtml(res, 200, paginaAdmin(resumo, agora, downloads));
+    }
+
+    if (rota === 'POST /admin/entrar') {
+      if (!acessoAdmin) return enviarHtml(res, 503, paginaAdminDesligado());
+      const ip = ipDe(req);
+      if (acessoAdmin.bloqueado(ip)) return enviarHtml(res, 429, paginaEntrarAdmin('Muitas tentativas. Espere 15 minutos.'));
+      const sessao = acessoAdmin.entrar(ip, (await lerFormulario(req)).get('senha') ?? '');
+      if (!sessao) return enviarHtml(res, 401, paginaEntrarAdmin('Senha errada.'));
+      res.writeHead(303, {
+        Location: '../admin',
+        'Cache-Control': 'no-store',
+        'Set-Cookie': `rtadmin=${sessao}; Path=${caminhoAdmin}; HttpOnly; Secure; SameSite=Strict; Max-Age=43200`,
+      });
+      res.end();
+      return undefined;
+    }
+
+    if (rota === 'POST /admin/sair') {
+      acessoAdmin?.sair(cookieAdmin(req));
+      res.writeHead(303, {
+        Location: '../admin',
+        'Cache-Control': 'no-store',
+        'Set-Cookie': `rtadmin=; Path=${caminhoAdmin}; HttpOnly; Secure; SameSite=Strict; Max-Age=0`,
+      });
+      res.end();
+      return undefined;
     }
 
     const conta = autenticar(req);
 
-    if (rota === 'GET /eu') return ok({ nome: conta.nome, conta: conta.id });
+    if (rota === 'GET /eu') return ok(dadosDaConta(conta));
+
+    // Painel do admin dentro do app: só para os e-mails de ADMIN_EMAILS.
+    if (rota === 'GET /admin/resumo') {
+      if (!ehAdmin(conta)) throw new ErroHttp(403, 'Só o admin vê este painel');
+      const { agora, resumo, downloads } = resumoAtual();
+      return ok({ agora, downloads, ...resumo });
+    }
 
     if (rota === 'POST /sair') {
       banco.apagarSessao(hashDoToken(tokenDe(req) as string));

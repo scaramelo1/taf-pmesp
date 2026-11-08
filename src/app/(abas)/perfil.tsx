@@ -1,20 +1,22 @@
 import { router } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
 import { useEffect, useState } from 'react';
-import { Alert, ScrollView } from 'react-native';
+import { Alert, Image, ScrollView, Text, View } from 'react-native';
 
 import { Botao, Campo, Cartao, estilos, Rotulo, Segmentado, TextoSuave } from '../../componentes/ui';
 import { obterPerfil, salvarPerfil, type Modo } from '../../db/repositorio';
 import { formatarData, hojeISO, lerData, mascararData } from '../../dominio/datas';
 import type { Cargo, Sexo } from '../../dominio/tipos';
 import { useConta, type EstadoBackup } from '../../hooks/useConta';
+import { cores } from '../../tema';
 
 /** Valida um campo de data opcional: vazio é aceito. */
 const erroData = (texto: string) => (texto && !lerData(texto) ? 'Data inválida (DD/MM/AAAA)' : undefined);
 
 export default function PerfilTela() {
   const db = useSQLiteContext();
-  const { avisarMudanca, versaoDados, nome: nomeGoogle } = useConta();
+  const { avisarMudanca, versaoDados, nome: primeiroNome, google } = useConta();
+  const nomeGoogle = google?.nomeCompleto || primeiroNome;
   const [nome, setNome] = useState('');
   const [sexo, setSexo] = useState<Sexo>('M');
   const [cargo, setCargo] = useState<Cargo>('soldado');
@@ -155,7 +157,8 @@ const TEXTO_BACKUP: Record<EstadoBackup, string> = {
 
 /** Conta Google, estado do backup, sair e apagar a conta. */
 function CartaoConta() {
-  const { nome, backup, enviarBackup, sair, apagarConta } = useConta();
+  const { nome, google, backup, enviarBackup, sair, apagarConta } = useConta();
+  const nomeConta = google?.nomeCompleto || nome;
   const [ocupado, setOcupado] = useState(false);
 
   async function confirmarSaida() {
@@ -198,8 +201,32 @@ function CartaoConta() {
   return (
     <Cartao>
       <Rotulo>Conta Google</Rotulo>
-      <TextoSuave>{nome ? `Conectado como ${nome}` : 'Conectado'}</TextoSuave>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+        {google?.foto ? (
+          <Image source={{ uri: google.foto }} style={{ width: 56, height: 56, borderRadius: 28 }} />
+        ) : (
+          <View
+            style={{
+              width: 56,
+              height: 56,
+              borderRadius: 28,
+              backgroundColor: cores.borda,
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <Text style={{ fontSize: 22, fontWeight: '700', color: cores.textoSuave }}>
+              {(nomeConta || '?').trim().charAt(0).toUpperCase()}
+            </Text>
+          </View>
+        )}
+        <View style={{ flex: 1 }}>
+          <Text style={{ fontSize: 16, fontWeight: '700', color: cores.texto }}>{nomeConta || 'Conectado'}</Text>
+          {google?.email ? <TextoSuave>{google.email}</TextoSuave> : null}
+        </View>
+      </View>
       <TextoSuave>{TEXTO_BACKUP[backup]}</TextoSuave>
+      {google?.admin ? <Botao titulo="Painel do admin" onPress={() => router.push('/admin')} /> : null}
       <Botao titulo="Sair da conta" variante="secundario" onPress={confirmarSaida} desabilitado={ocupado} />
       <Botao titulo="Apagar conta e backup" variante="perigo" onPress={confirmarApagar} desabilitado={ocupado} />
     </Cartao>

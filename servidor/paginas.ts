@@ -2,7 +2,7 @@
 // página inicial, política de privacidade e como apagar a conta.
 
 const CONTATO = 'fsadesignerbr@gmail.com';
-const ATUALIZADA_EM = '4 de novembro de 2026';
+const ATUALIZADA_EM = '8 de novembro de 2026';
 
 function pagina(titulo: string, corpo: string) {
   return `<!doctype html>
@@ -57,8 +57,8 @@ export const paginaPrivacidade = () => pagina('Política de Privacidade', `
 
 <h2>1. Dados que coletamos</h2>
 <ul>
-<li><strong>Da sua conta Google:</strong> apenas um identificador da conta (um número que o Google cria para o app) e o seu primeiro nome.
-Não recebemos seu e-mail, senha, contatos, fotos nem qualquer outro dado da conta.</li>
+<li><strong>Da sua conta Google:</strong> um identificador da conta (um número que o Google cria para o app), seu nome,
+seu e-mail e o endereço da foto do perfil. Não recebemos sua senha, contatos, arquivos nem qualquer outro dado da conta.</li>
 <li><strong>Dados que você digita no app:</strong> perfil (nome, sexo, cargo pretendido, modo candidato ou policial, data de nascimento e data da prova)
 e os treinos (data, resultados de cada teste e observações).</li>
 </ul>
@@ -66,7 +66,9 @@ e os treinos (data, resultados de cada teste e observações).</li>
 
 <h2>2. Para que usamos</h2>
 <ul>
-<li>Para identificar você no login e guardar o backup dos seus treinos.</li>
+<li>Para identificar você no login, mostrar seu nome e foto no app e guardar o backup dos seus treinos.</li>
+<li>O e-mail serve para identificar sua conta caso você peça ajuda ou a exclusão dos dados. Não enviamos propaganda.</li>
+<li>Números gerais de uso (quantas pessoas se cadastraram e quantos treinos foram lançados) são vistos apenas pela FSA Designer para melhorar o app.</li>
 <li>Para devolver seus dados quando você entra em outro celular com a mesma conta.</li>
 </ul>
 <p>Os cálculos (apto/inapto, pontos, gráficos) são feitos no próprio celular.</p>
@@ -112,6 +114,6 @@ export const paginaApagarConta = () => pagina('Apagar conta do ReadyTAF', `
 com o assunto "Apagar conta ReadyTAF", a partir do Gmail usado no login. Apagamos tudo em até 7 dias e respondemos confirmando.</p>
 
 <h2>O que é apagado</h2>
-<p>Tudo: identificador da conta Google, nome, perfil e todos os treinos. As cópias de segurança do servidor somem em até 14 dias.
+<p>Tudo: identificador da conta Google, nome, e-mail, foto, perfil e todos os treinos. As cópias de segurança do servidor somem em até 14 dias.
 Nada é mantido depois disso.</p>
 `);

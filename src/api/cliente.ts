@@ -32,11 +32,53 @@ async function pedir<T>(base: string, caminho: string, token: string | null, met
   return dados as T;
 }
 
-export interface Sessao {
-  token: string;
+/** O que o servidor sabe da conta Google. */
+export interface DadosConta {
+  /** Primeiro nome. */
   nome: string;
+  nomeCompleto: string;
+  email: string | null;
+  foto: string | null;
   /** Identificador da conta no servidor: mostra se quem entrou é a mesma pessoa de antes. */
   conta: string;
+  /** Vê o painel do admin. */
+  admin: boolean;
+}
+
+export interface Sessao extends DadosConta {
+  token: string;
+}
+
+export interface LinhaAdmin {
+  nome: string;
+  email: string | null;
+  foto: string | null;
+  modo: string | null;
+  criadaEm: number;
+  ultimoAcesso: number | null;
+  treinos: number;
+  treinos7: number;
+  ultimoTreino: number | null;
+  sessoes: number;
+}
+
+export interface ResumoAdmin {
+  agora: number;
+  downloads: number | null;
+  contas: number;
+  novas7: number;
+  novas30: number;
+  ativos1: number;
+  ativos7: number;
+  ativos30: number;
+  comTreino: number;
+  lancaram7: number;
+  treinos: number;
+  treinos7: number;
+  treinos30: number;
+  modos: { candidato: number; efetivo: number; semPerfil: number };
+  dias: { dia: string; treinos: number; cadastros: number }[];
+  linhas: LinhaAdmin[];
 }
 
 export interface Backup {
@@ -53,7 +95,8 @@ export const aguardarLoginGoogle = (verificador: string, base = URL_API) =>
 
 export function criarCliente(token: string, base = URL_API) {
   return {
-    eu: () => pedir<{ nome: string; conta: string }>(base, '/eu', token),
+    eu: () => pedir<DadosConta>(base, '/eu', token),
+    resumoAdmin: () => pedir<ResumoAdmin>(base, '/admin/resumo', token),
     sair: () => pedir<{ ok: boolean }>(base, '/sair', token, 'POST'),
     apagarConta: () => pedir<{ ok: boolean }>(base, '/conta', token, 'DELETE'),
     lerBackup: () => pedir<Backup>(base, '/dados', token),

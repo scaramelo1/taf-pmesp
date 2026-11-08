@@ -8,7 +8,7 @@ import type { ReactNode } from 'react';
 import { AppState, Platform } from 'react-native';
 
 import { ErroApi, aguardarLoginGoogle, criarCliente, urlDoLogin } from '../api/cliente';
-import type { Cliente } from '../api/cliente';
+import type { Cliente, DadosConta, ResumoAdmin } from '../api/cliente';
 import { sincronizar } from '../api/sincronizar';
 import {
   aplicarCopia,
@@ -23,6 +23,8 @@ const CHAVE_TOKEN = 'token';
 const CHAVE_NOME = 'nome';
 /** Conta dona dos dados deste aparelho; continua gravada mesmo se a sessão expirar. */
 const CHAVE_CONTA = 'conta';
+/** Nome completo, e-mail, foto e se é admin, em JSON. */
+const CHAVE_GOOGLE = 'google';
 /** Tempo para escolher a conta no Google; cada pedido espera até 25 s no servidor. */
 const TEMPO_DE_LOGIN_MS = 5 * 60_000;
 /** Pausa antes de tentar de novo quando a internet falha. */
@@ -40,10 +42,36 @@ function enderecoDeRetorno() {
 
 export type EstadoBackup = 'ok' | 'enviando' | 'pendente';
 
+/** Dados da conta Google mostrados no perfil. */
+export interface ContaGoogle {
+  nomeCompleto: string;
+  email: string | null;
+  foto: string | null;
+  admin: boolean;
+}
+
+function lerGoogle(texto: string | null): ContaGoogle | null {
+  if (!texto) return null;
+  try {
+    return JSON.parse(texto) as ContaGoogle;
+  } catch {
+    return null;
+  }
+}
+
+const googleDe = (d: DadosConta): ContaGoogle => ({
+  nomeCompleto: d.nomeCompleto || d.nome,
+  email: d.email ?? null,
+  foto: d.foto ?? null,
+  admin: !!d.admin,
+});
+
 interface ValorConta {
   carregando: boolean;
   /** Primeiro nome da conta Google; null fora da conta. */
   nome: string | null;
+  /** Nome completo, e-mail e foto da conta Google; null fora da conta ou antes de atualizar. */
+  google: ContaGoogle | null;
   backup: EstadoBackup;
   /** Sobe quando o backup traz dados de outro aparelho: as telas recarregam. */
   versaoDados: number;
@@ -54,6 +82,8 @@ interface ValorConta {
   enviarBackup: () => Promise<boolean>;
   sair: () => Promise<void>;
   apagarConta: () => Promise<void>;
+  /** Números do app para o painel do admin. */
+  lerResumoAdmin: () => Promise<ResumoAdmin>;
 }
 
 const Contexto = createContext<ValorConta | null>(null);
@@ -62,6 +92,7 @@ export function ProvedorConta({ children }: { children: ReactNode }) {
   const db = useSQLiteContext();
   const [carregando, setCarregando] = useState(true);
   const [nome, setNome] = useState<string | null>(null);
+  const [google, setGoogle] = useState<ContaGoogle | null>(null);
   const [backup, setBackup] = useState<EstadoBackup>('ok');
   const [versaoDados, setVersaoDados] = useState(0);
   const cliente = useRef<Cliente | null>(null);
@@ -73,6 +104,7 @@ export function ProvedorConta({ children }: { children: ReactNode }) {
     cliente.current = null;
     await apagarConfig(db, CHAVE_TOKEN);
     setNome(null);
+    setGoogle(null);
   }, [db]);
 
   const local = useMemo(
@@ -126,12 +158,27 @@ export function ProvedorConta({ children }: { children: ReactNode }) {
   useEffect(() => {
     let ativo = true;
     (async () => {
-      const [token, nomeSalvo] = await Promise.all([lerConfig(db, CHAVE_TOKEN), lerConfig(db, CHAVE_NOME)]);
+      const [token, nomeSalvo, googleSalvo] = await Promise.all([
+        lerConfig(db, CHAVE_TOKEN),
+        lerConfig(db, CHAVE_NOME),
+        lerConfig(db, CHAVE_GOOGLE),
+      ]);
       if (!ativo) return;
       if (token) {
-        cliente.current = criarCliente(token);
+        const api = criarCliente(token);
+        cliente.current = api;
         setNome(nomeSalvo ?? '');
+        setGoogle(lerGoogle(googleSalvo));
         void enviarBackup();
+        // Traz foto, e-mail e nome atualizados; sem internet fica o que estava gravado.
+        api.eu().then(async (dados) => {
+          if (!ativo || cliente.current !== api) return;
+          const atual = googleDe(dados);
+          setGoogle(atual);
+          setNome(dados.nome);
+          await salvarConfig(db, CHAVE_GOOGLE, JSON.stringify(atual));
+          await salvarConfig(db, CHAVE_NOME, dados.nome);
+        }).catch(() => undefined);
       }
       setCarregando(false);
     })().catch((erro: unknown) => {
@@ -193,10 +240,13 @@ export function ProvedorConta({ children }: { children: ReactNode }) {
       await salvarConfig(db, CHAVE_TOKEN, sessao.token);
       await salvarConfig(db, CHAVE_NOME, sessao.nome);
       await salvarConfig(db, CHAVE_CONTA, sessao.conta);
+      const dadosGoogle = googleDe(sessao);
+      await salvarConfig(db, CHAVE_GOOGLE, JSON.stringify(dadosGoogle));
       cliente.current = criarCliente(sessao.token);
 
       // Traz o backup antes de abrir o app, para o celular novo já mostrar os treinos.
       await enviarBackup();
+      setGoogle(dadosGoogle);
       setNome(sessao.nome);
     } catch (falha) {
       console.error('Falha no login', falha);
@@ -213,6 +263,7 @@ export function ProvedorConta({ children }: { children: ReactNode }) {
     await apagarDadosLocais(db);
     await apagarConfig(db, CHAVE_CONTA);
     await apagarConfig(db, CHAVE_NOME);
+    await apagarConfig(db, CHAVE_GOOGLE);
     await encerrarSessao();
     setBackup('ok');
   }, [db, encerrarSessao]);
@@ -230,14 +281,28 @@ export function ProvedorConta({ children }: { children: ReactNode }) {
     await apagarDadosLocais(db);
     await apagarConfig(db, CHAVE_CONTA);
     await apagarConfig(db, CHAVE_NOME);
+    await apagarConfig(db, CHAVE_GOOGLE);
     await encerrarSessao();
     setBackup('ok');
   }, [db, encerrarSessao]);
+
+  const lerResumoAdmin = useCallback(async () => {
+    const api = cliente.current;
+    if (!api) throw new Error('Entre com a conta Google.');
+    try {
+      return await api.resumoAdmin();
+    } catch (erro) {
+      if (erro instanceof ErroApi && erro.status === 0) throw new Error('Sem internet.');
+      if (erro instanceof ErroApi && erro.status === 403) throw new Error('Esta conta não é de admin.');
+      throw new Error('Não foi possível carregar os números.');
+    }
+  }, []);
 
   const valor = useMemo<ValorConta>(
     () => ({
       carregando,
       nome,
+      google,
       backup,
       versaoDados,
       entrarComGoogle,
@@ -245,8 +310,9 @@ export function ProvedorConta({ children }: { children: ReactNode }) {
       enviarBackup,
       sair,
       apagarConta,
+      lerResumoAdmin,
     }),
-    [carregando, nome, backup, versaoDados, entrarComGoogle, avisarMudanca, enviarBackup, sair, apagarConta],
+    [carregando, nome, google, backup, versaoDados, entrarComGoogle, avisarMudanca, enviarBackup, sair, apagarConta, lerResumoAdmin],
   );
 
   return <Contexto.Provider value={valor}>{children}</Contexto.Provider>;

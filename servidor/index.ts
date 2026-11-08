@@ -1,4 +1,4 @@
-import { mkdirSync } from 'node:fs';
+import { mkdirSync, readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 
 import { criarApi } from './api.ts';
@@ -17,6 +17,18 @@ const api = criarApi(banco, {
   google: GOOGLE_CLIENT_ID && GOOGLE_CLIENT_SECRET
     ? { clientId: GOOGLE_CLIENT_ID, clientSecret: GOOGLE_CLIENT_SECRET, urlPublica: URL_PUBLICA }
     : undefined,
+  admin: {
+    senha: process.env.ADMIN_SENHA || undefined,
+    emails: (process.env.ADMIN_EMAILS ?? '').split(','),
+    lerDownloads: () => {
+      try {
+        const total = Number.parseInt(readFileSync(process.env.DOWNLOADS ?? '/var/www/fsa-designer/readytaf/downloads.txt', 'utf8'), 10);
+        return Number.isFinite(total) ? total : null;
+      } catch {
+        return null;
+      }
+    },
+  },
 });
 
 api.listen(PORTA, HOST, () => console.log(`ReadyTAF em http://${HOST}:${PORTA}`));

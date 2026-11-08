@@ -10,6 +10,7 @@ import { sincronizar } from '../../src/api/sincronizar.ts';
 import type { DadosLocais } from '../../src/api/sincronizar.ts';
 import { COPIA_VAZIA, mesclar } from '../../src/dominio/sincronia.ts';
 import type { CopiaDados, TreinoCopia } from '../../src/dominio/sincronia.ts';
+import { resumirAdmin } from '../admin.ts';
 import { criarApi } from '../api.ts';
 import { BancoSqlite } from '../banco.ts';
 import { paginaDeRetorno } from '../google.ts';
@@ -55,6 +56,7 @@ describe('servidor do ReadyTAF', () => {
       trocarCodigo: async () => idTokenFalso,
       esperaMs: 300,
     },
+    admin: { senha: 'senha-certa', emails: ['Chefe@Exemplo.test'], lerDownloads: () => 10 },
   });
   let base = '';
 
@@ -80,7 +82,10 @@ describe('servidor do ReadyTAF', () => {
     const google = new URL(inicio.headers.get('location') as string);
     assert.equal(google.searchParams.get('redirect_uri'), 'https://exemplo.test/readytaf-api/auth/google/retorno');
 
-    const carga = { iss: 'https://accounts.google.com', aud: 'cliente-teste', exp: Date.now() / 1000 + 600, sub: 'g-1', given_name: 'Bia' };
+    const carga = {
+      iss: 'https://accounts.google.com', aud: 'cliente-teste', exp: Date.now() / 1000 + 600, sub: 'g-1',
+      given_name: 'Bia', name: 'Bia Souza', email: 'bia@exemplo.test', picture: 'https://lh3.googleusercontent.com/a/foto',
+    };
     idTokenFalso = `x.${Buffer.from(JSON.stringify(carga)).toString('base64url')}.y`;
     const retorno = await fetch(`${base}/auth/google/retorno?code=abc&state=${google.searchParams.get('state')}`);
     assert.match(await retorno.text(), /Voltar ao ReadyTAF/);
@@ -88,7 +93,11 @@ describe('servidor do ReadyTAF', () => {
     const sessao = await aguardarLoginGoogle(verificador, base);
     assert.ok('token' in sessao);
     assert.equal(sessao.nome, 'Bia');
-    assert.deepEqual(await criarCliente(sessao.token, base).eu(), { nome: 'Bia', conta: sessao.conta });
+    assert.equal(google.searchParams.get('scope'), 'openid profile email');
+    assert.deepEqual(await criarCliente(sessao.token, base).eu(), {
+      nome: 'Bia', nomeCompleto: 'Bia Souza', email: 'bia@exemplo.test',
+      foto: 'https://lh3.googleusercontent.com/a/foto', conta: sessao.conta, admin: false,
+    });
 
     assert.deepEqual(await aguardarLoginGoogle('w'.repeat(64), base), { pendente: true });
   });
@@ -190,6 +199,88 @@ describe('servidor do ReadyTAF', () => {
       assert.match(await r.text(), new RegExp(texto));
     }
     assert.equal((await fetch(`${base}/icone.png`)).headers.get('content-type'), 'image/png');
+  });
+
+  it('painel do admin no app: só o e-mail do admin vê', async () => {
+    const comum = await entrar('g-comum', 'Zé');
+    await assert.rejects(criarCliente(comum, base).resumoAdmin(), (e: ErroApi) => e.status === 403);
+
+    const resposta = await fetch(`${base}/auth/teste`, {
+      method: 'POST', body: JSON.stringify({ sub: 'g-chefe', nome: 'Chefe', email: 'chefe@exemplo.test' }),
+    });
+    const chefe = (await resposta.json()) as { token: string; admin: boolean };
+    assert.equal(chefe.admin, true);
+    const api = criarCliente(chefe.token, base);
+    await api.gravarBackup(0, { perfil: null, treinos: [treino('chefe-treino-1')], excluidos: [] });
+    const resumo = await api.resumoAdmin();
+    assert.ok(resumo.contas >= 2);
+    assert.ok(resumo.treinos >= 1);
+    assert.equal(resumo.downloads, 10);
+    assert.ok(resumo.linhas.some((l) => l.email === 'chefe@exemplo.test' && l.treinos === 1));
+  });
+
+  it('página de admin no site pede a senha', async () => {
+    const semLogin = await fetch(`${base}/admin`);
+    assert.match(await semLogin.text(), /type="password"/);
+
+    const errada = await fetch(`${base}/admin/entrar`, {
+      method: 'POST', body: 'senha=errada', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, redirect: 'manual',
+    });
+    assert.equal(errada.status, 401);
+
+    const certa = await fetch(`${base}/admin/entrar`, {
+      method: 'POST', body: 'senha=senha-certa', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, redirect: 'manual',
+    });
+    assert.equal(certa.status, 303);
+    const cookie = String(certa.headers.get('set-cookie'));
+    assert.match(cookie, /Path=\/readytaf-api\/admin; HttpOnly; Secure; SameSite=Strict/);
+    const painel = await fetch(`${base}/admin`, { headers: { cookie: cookie.split(';')[0] } });
+    const texto = await painel.text();
+    assert.match(texto, /Pessoas cadastradas/);
+    assert.match(texto, /Downloads do APK/);
+    assert.doesNotMatch(texto, /type="password"/);
+  });
+
+  it('página de admin bloqueia depois de muitas senhas erradas', async () => {
+    const tentar = (senha: string) => fetch(`${base}/admin/entrar`, {
+      method: 'POST', body: `senha=${senha}`, redirect: 'manual',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-Real-IP': '9.9.9.9' },
+    });
+    for (let i = 0; i < 5; i++) await tentar('chute');
+    assert.equal((await tentar('senha-certa')).status, 429);
+  });
+
+  it('resumo do admin conta treinos e cadastros por dia, no horário de Brasília', () => {
+    const agora = Date.parse('2026-11-08T15:00:00Z');
+    const r = resumirAdmin([
+      {
+        id: 'a', nome: 'Ana', nomeCompleto: 'Ana Lima', email: 'ana@x.test', foto: null,
+        criadaEm: '2026-11-08 02:00:00', ultimoAcesso: agora - 3_600_000, sessoes: 1, backupEm: null,
+        dados: JSON.stringify({
+          perfil: { modo: 'candidato' },
+          treinos: [{ criadoEm: '2026-11-08 12:00:00' }, { criadoEm: '2026-11-08 01:00:00' }, { criadoEm: '2026-09-01 12:00:00' }],
+        }),
+      },
+      {
+        id: 'b', nome: 'Beto', nomeCompleto: null, email: null, foto: null,
+        criadaEm: '2026-10-01 12:00:00', ultimoAcesso: null, sessoes: 0, backupEm: null, dados: null,
+      },
+    ], agora);
+    assert.equal(r.contas, 2);
+    assert.equal(r.novas7, 1);
+    assert.equal(r.ativos1, 1);
+    assert.equal(r.treinos, 3);
+    assert.equal(r.treinos7, 2);
+    assert.equal(r.comTreino, 1);
+    assert.equal(r.lancaram7, 1);
+    assert.deepEqual(r.modos, { candidato: 1, efetivo: 0, semPerfil: 1 });
+    // 01:00 UTC de 08/11 ainda é 07/11 em Brasília; 02:00 UTC também.
+    const hoje = r.dias[r.dias.length - 1];
+    assert.equal(hoje.dia, '2026-11-08');
+    assert.equal(hoje.treinos, 1);
+    assert.equal(r.dias[r.dias.length - 2].treinos, 1);
+    assert.equal(r.dias[r.dias.length - 2].cadastros, 1);
+    assert.equal(r.linhas[0].nome, 'Ana Lima');
   });
 
   it('página de retorno escapa o endereço', () => {

@@ -3,7 +3,33 @@ import { DatabaseSync } from 'node:sqlite';
 export interface Conta {
   id: string;
   nome: string;
+  nomeCompleto: string | null;
+  email: string | null;
+  foto: string | null;
 }
+
+export interface DadosGoogle {
+  nome: string;
+  nomeCompleto: string;
+  email: string | null;
+  foto: string | null;
+}
+
+/** Uma linha por conta para a página de admin, com o backup cru. */
+export interface ContaAdmin {
+  id: string;
+  nome: string;
+  nomeCompleto: string | null;
+  email: string | null;
+  foto: string | null;
+  criadaEm: string;
+  ultimoAcesso: number | null;
+  sessoes: number;
+  dados: string | null;
+  backupEm: string | null;
+}
+
+const CAMPOS_CONTA = 'c.id, c.nome, c.nome_completo AS nomeCompleto, c.email, c.foto';
 
 export interface Backup {
   /** Sobe a cada gravação: quem grava a partir de uma versão velha precisa juntar de novo. */
@@ -24,7 +50,7 @@ export class BancoSqlite {
       PRAGMA journal_mode = WAL;
       PRAGMA foreign_keys = ON;
 
-      -- Do Google guardamos só o identificador (sub) e o primeiro nome; nada de e-mail.
+      -- Do Google guardamos o identificador (sub), o nome, o e-mail e o endereço da foto.
       CREATE TABLE IF NOT EXISTS conta (
         id TEXT PRIMARY KEY,
         google_sub TEXT NOT NULL UNIQUE,
@@ -48,24 +74,34 @@ export class BancoSqlite {
         atualizado_em TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
       );
     `);
+    // Contas criadas antes de o app pedir e-mail e foto.
+    const colunas = new Set(
+      (this.db.prepare('PRAGMA table_info(conta)').all() as { name: string }[]).map((c) => c.name),
+    );
+    for (const coluna of ['nome_completo', 'email', 'foto']) {
+      if (!colunas.has(coluna)) this.db.exec(`ALTER TABLE conta ADD COLUMN ${coluna} TEXT`);
+    }
   }
 
   contaPorGoogle(googleSub: string): Conta | null {
-    const linha = this.db.prepare('SELECT id, nome FROM conta WHERE google_sub = ?').get(googleSub);
+    const linha = this.db.prepare(`SELECT ${CAMPOS_CONTA} FROM conta c WHERE c.google_sub = ?`).get(googleSub);
     return (linha as unknown as Conta | undefined) ?? null;
   }
 
-  criarConta(id: string, googleSub: string, nome: string) {
-    this.db.prepare('INSERT INTO conta (id, google_sub, nome) VALUES (?, ?, ?)').run(id, googleSub, nome);
+  criarConta(id: string, googleSub: string, g: DadosGoogle) {
+    this.db.prepare('INSERT INTO conta (id, google_sub, nome, nome_completo, email, foto) VALUES (?, ?, ?, ?, ?, ?)')
+      .run(id, googleSub, g.nome, g.nomeCompleto, g.email, g.foto);
   }
 
-  atualizarNome(id: string, nome: string) {
-    this.db.prepare('UPDATE conta SET nome = ? WHERE id = ?').run(nome, id);
+  /** A cada login traz o que mudou na conta Google (nome, e-mail, foto). */
+  atualizarGoogle(id: string, g: DadosGoogle) {
+    this.db.prepare('UPDATE conta SET nome = ?, nome_completo = ?, email = ?, foto = ? WHERE id = ?')
+      .run(g.nome, g.nomeCompleto, g.email, g.foto, id);
   }
 
   contaPorToken(tokenHash: string): Conta | null {
     const linha = this.db.prepare(
-      'SELECT c.id, c.nome FROM conta c JOIN sessao s ON s.conta_id = c.id WHERE s.token_hash = ?',
+      `SELECT ${CAMPOS_CONTA} FROM conta c JOIN sessao s ON s.conta_id = c.id WHERE s.token_hash = ?`,
     ).get(tokenHash);
     return (linha as unknown as Conta | undefined) ?? null;
   }
@@ -105,6 +141,17 @@ export class BancoSqlite {
          atualizado_em = CURRENT_TIMESTAMP`,
     ).run(contaId, nova, dados);
     return nova;
+  }
+
+  /** Todas as contas com o backup, para a página de admin. */
+  contasParaAdmin(): ContaAdmin[] {
+    return this.db.prepare(
+      `SELECT ${CAMPOS_CONTA}, c.criada_em AS criadaEm, c.ultimo_acesso AS ultimoAcesso,
+         (SELECT COUNT(*) FROM sessao s WHERE s.conta_id = c.id) AS sessoes,
+         b.dados, b.atualizado_em AS backupEm
+       FROM conta c LEFT JOIN backup b ON b.conta_id = c.id
+       ORDER BY c.criada_em`,
+    ).all() as unknown as ContaAdmin[];
   }
 
   fechar() {

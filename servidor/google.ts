@@ -24,7 +24,12 @@ export interface ConfigGoogle {
 
 export interface UsuarioGoogle {
   sub: string;
+  /** Primeiro nome, para cumprimentar. */
   nome: string;
+  nomeCompleto: string;
+  email: string | null;
+  /** Endereço da foto da conta Google; null quando a conta não tem foto. */
+  foto: string | null;
 }
 
 interface LoginPendente {
@@ -70,6 +75,9 @@ ${aviso
 </body>
 </html>`;
 }
+
+const usuarioDe = ({ sub, nome, nomeCompleto, email, foto }: UsuarioGoogle): UsuarioGoogle =>
+  ({ sub, nome, nomeCompleto, email, foto });
 
 const token = () => randomBytes(32).toString('base64url');
 
@@ -117,7 +125,7 @@ export class LoginGoogle {
       client_id: this.config.clientId,
       redirect_uri: this.redirectUri,
       response_type: 'code',
-      scope: 'openid profile',
+      scope: 'openid profile email',
       state: estado,
       prompt: 'select_account',
     }).toString();
@@ -150,7 +158,12 @@ export class LoginGoogle {
       && typeof dados.sub === 'string' && dados.sub.length > 0;
     if (!valido) return null;
     const nome = String(dados.given_name ?? dados.name ?? 'Atleta').slice(0, 40);
-    return { sub: dados.sub as string, nome };
+    const nomeCompleto = String(dados.name ?? nome).slice(0, 100);
+    const email = typeof dados.email === 'string' && dados.email.length <= 200 ? dados.email : null;
+    const foto = typeof dados.picture === 'string' && /^https:\/\/[^\s"'<>]+$/.test(dados.picture) && dados.picture.length <= 500
+      ? dados.picture
+      : null;
+    return { sub: dados.sub as string, nome, nomeCompleto, email, foto };
   }
 
   /** Devolve para onde redirecionar; null quando o login é desconhecido ou expirou. */
@@ -194,7 +207,7 @@ export class LoginGoogle {
       // Não queima o código: com o navegador na frente, o Android corta a rede do app e a resposta
       // pode ir para uma conexão já morta. Até o código expirar, o app pode pedir de novo.
       // O desafio só é alcançado com o verificador, que nunca sai do aparelho.
-      if (pendente && pendente.expira > this.relogio()) return { sub: pendente.sub, nome: pendente.nome };
+      if (pendente && pendente.expira > this.relogio()) return usuarioDe(pendente);
       if (codigo) this.porDesafio.delete(desafio);
       if (Date.now() >= fim) return null;
       await new Promise((pronto) => { setTimeout(pronto, INTERVALO_ESPERA_MS); });
@@ -209,6 +222,6 @@ export class LoginGoogle {
     this.porDesafio.delete(pendente.desafio);
     const desafio = createHash('sha256').update(verificador).digest('base64url');
     if (pendente.expira <= this.relogio() || desafio !== pendente.desafio) return null;
-    return { sub: pendente.sub, nome: pendente.nome };
+    return usuarioDe(pendente);
   }
 }
